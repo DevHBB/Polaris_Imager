@@ -109,9 +109,15 @@ export const CONFIG = {
         //      utilisez une clé dédiée, pas une clé d'administration.
         uiApiKey: (env.AVATAR_IMAGING_GENERATE_KEY || '').trim(),
 
-        // [EN] Figure shown when the page opens with no ?figure=.
-        // [FR] Figure affichée quand la page s'ouvre sans ?figure=.
-        defaultFigure: (env.AVATAR_IMAGING_DEFAULT_FIGURE || '').trim(),
+        // [EN] Figure shown when the panel opens with no ?figure=. It falls back
+        //      to a plain default outfit so the panel is never blank on a fresh
+        //      install — an empty preview looks broken, not empty.
+        // [FR] Figure affichée quand le panel s'ouvre sans ?figure=. Elle retombe
+        //      sur une tenue par défaut simple pour que le panel ne soit jamais
+        //      vide sur une installation neuve — un aperçu vide a l'air cassé, pas
+        //      vide.
+        defaultFigure: (env.AVATAR_IMAGING_DEFAULT_FIGURE || '').trim()
+            || 'hd-180-1.ch-255-66.lg-280-110.sh-305-62',
 
         // [EN] Login form. false (default) => the panel is public.
         // [FR] Formulaire de connexion. false (défaut) => panel public.

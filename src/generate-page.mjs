@@ -136,6 +136,10 @@ a{color:var(--blue)}
   background-size:18px 18px; background-position:0 0,9px 9px;
 }
 .preview img{max-width:100%; image-rendering:pixelated; display:block}
+/* [EN] An <img> with no src draws a broken icon and its alt text; hide it until
+        a real URL is set. [FR] Une <img> sans src affiche une icône cassée et son
+        texte alternatif ; on la masque tant qu'aucune URL réelle n'est définie. */
+.preview img:not([src]){display:none}
 .preview::before,.preview::after{content:""; position:absolute; width:16px; height:16px; pointer-events:none}
 .preview::before{top:9px; left:9px; border-top:2px solid var(--amber); border-left:2px solid var(--amber)}
 .preview::after{bottom:9px; right:9px; border-bottom:2px solid var(--amber); border-right:2px solid var(--amber)}
@@ -191,6 +195,8 @@ input[type=color]{width:100%; height:42px; padding:3px; background:var(--panel2)
 .dir:hover{border-color:#3d4d6d}
 .dir.on{border-color:var(--amber); background:#2a2416}
 .dir img{width:100%; display:block; image-rendering:pixelated; min-height:34px}
+.dir img:not([src]){display:none}
+.dir:has(img:not([src])){min-height:44px}
 .dir i{position:absolute; top:3px; left:4px; font-style:normal; font-family:var(--mono);
   font-size:9px; color:var(--muted)}
 .dir.on i{color:var(--amber)}
@@ -569,7 +575,7 @@ input[type=color]{width:100%; height:42px; padding:3px; background:var(--panel2)
         b.dataset.kind = kind;
         b.dataset.dir = d;
         b.title = 'Direction ' + d;
-        b.innerHTML = '<i>' + d + '</i><img alt="Direction ' + d + '">';
+        b.innerHTML = '<i>' + d + '</i><img alt="">';
         b.addEventListener('click', function () {
           state[this.dataset.kind] = parseInt(this.dataset.dir, 10);
           refresh();
