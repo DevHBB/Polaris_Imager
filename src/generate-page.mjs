@@ -78,39 +78,40 @@ export const renderGeneratePage = ({
 <title>${esc(title)}</title>
 <style>
 /* =====================================================================
-   [EN] Design tokens. Dark "pixel workshop" palette: cool slate panels,
-        hotel-sign amber for the active/primary accent, blue for selection.
-        No web fonts are loaded so the page renders offline.
-   [FR] Jetons de design. Palette sombre « atelier pixel » : panneaux
-        ardoise, ambre « enseigne d'hôtel » pour l'accent principal, bleu
-        pour la sélection. Aucune police web n'est chargée : la page
+   [EN] Design tokens. Light "studio" palette: white surfaces on a barely
+        tinted background, sky blue as the single accent, one soft shadow
+        level. No web fonts are loaded so the page renders offline.
+   [FR] Jetons de design. Palette claire « studio » : surfaces blanches sur
+        un fond à peine teinté, bleu ciel comme unique accent, un seul
+        niveau d'ombre douce. Aucune police web n'est chargée : la page
         s'affiche hors ligne.
    ===================================================================== */
 :root{
-  --ink:#0c1017; --panel:#141a25; --panel2:#1a2130; --line:#28324a;
-  --text:#e9eef8; --muted:#8b98ae; --amber:#ffb020; --blue:#4ea8ff;
-  --ok:#3ad18c; --err:#ff6f6f;
+  --bg:#f4f8fc; --panel:#ffffff; --panel2:#f7fafd; --line:#e2ebf4;
+  --text:#16212f; --muted:#69798e; --sky:#2f9bf0; --sky-dark:#1a7fd0;
+  --sky-soft:#e8f4fe; --ok:#0f9b5c; --err:#d63b46;
   --mono:ui-monospace,"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
   --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --r:10px;
+  --r:12px;
+  --shadow:0 1px 2px rgba(20,40,70,.05), 0 10px 26px -18px rgba(20,40,70,.35);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
-  background:var(--ink); color:var(--text); font-family:var(--body); font-size:14px;
+  background:var(--bg); color:var(--text); font-family:var(--body); font-size:14px;
   line-height:1.5; -webkit-font-smoothing:antialiased;
-  background-image:radial-gradient(circle at 18% -10%,rgba(255,176,32,.07),transparent 45%),
-                   radial-gradient(circle at 92% 0%,rgba(78,168,255,.06),transparent 40%);
+  background-image:radial-gradient(circle at 12% -8%,rgba(47,155,240,.10),transparent 42%),
+                   radial-gradient(circle at 95% 2%,rgba(47,155,240,.07),transparent 38%);
   background-attachment:fixed;
 }
-a{color:var(--blue)}
+a{color:var(--sky-dark)}
 
 /* --- [EN] Header / [FR] En-tête ------------------------------------- */
-.top{border-bottom:1px solid var(--line); background:rgba(12,16,23,.86); backdrop-filter:blur(6px);
+.top{border-bottom:1px solid var(--line); background:rgba(255,255,255,.88); backdrop-filter:blur(8px);
      position:sticky; top:0; z-index:20}
 .topIn{max-width:1240px; margin:0 auto; padding:14px 22px; display:flex; align-items:center; gap:14px}
 .brand{font-family:var(--mono); font-size:13px; font-weight:700; letter-spacing:.18em; text-transform:uppercase}
-.brand b{color:var(--amber)}
+.brand b{color:var(--sky)}
 .tagline{color:var(--muted); font-size:12px; margin-left:auto; font-family:var(--mono); letter-spacing:.05em}
 @media(max-width:700px){.tagline{display:none}}
 
@@ -120,19 +121,20 @@ a{color:var(--blue)}
 @media(max-width:980px){.grid{grid-template-columns:1fr}}
 .col-left{position:sticky; top:76px}
 @media(max-width:980px){.col-left{position:static}}
-.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:18px; margin-bottom:18px}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:18px;
+      margin-bottom:18px; box-shadow:var(--shadow)}
 .card h2{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase;
          color:var(--muted); margin:0 0 14px; font-weight:700}
 
 /* --- [EN] Preview: the signature block. Checkerboard = transparency,
-         amber corner brackets = the "viewfinder" of the studio.
-     [FR] Aperçu : le bloc signature. Damier = transparence, équerres
-         ambre = le « viseur » du studio. --------------------------- */
+         sky-blue corner brackets = the "viewfinder" of the studio.
+     [FR] Aperçu : le bloc signature. Damier = transparence, équerres bleu
+         ciel = le « viseur » du studio. ---------------------------- */
 .preview{position:relative; border:1px solid var(--line); border-radius:var(--r); min-height:288px;
   display:flex; align-items:center; justify-content:center; padding:26px; overflow:hidden;
-  background-color:#0f141d;
-  background-image:linear-gradient(45deg,#161d29 25%,transparent 25%,transparent 75%,#161d29 75%),
-                   linear-gradient(45deg,#161d29 25%,transparent 25%,transparent 75%,#161d29 75%);
+  background-color:#ffffff;
+  background-image:linear-gradient(45deg,#eef4fa 25%,transparent 25%,transparent 75%,#eef4fa 75%),
+                   linear-gradient(45deg,#eef4fa 25%,transparent 25%,transparent 75%,#eef4fa 75%);
   background-size:18px 18px; background-position:0 0,9px 9px;
 }
 .preview img{max-width:100%; image-rendering:pixelated; display:block}
@@ -141,48 +143,51 @@ a{color:var(--blue)}
         texte alternatif ; on la masque tant qu'aucune URL réelle n'est définie. */
 .preview img:not([src]){display:none}
 .preview::before,.preview::after{content:""; position:absolute; width:16px; height:16px; pointer-events:none}
-.preview::before{top:9px; left:9px; border-top:2px solid var(--amber); border-left:2px solid var(--amber)}
-.preview::after{bottom:9px; right:9px; border-bottom:2px solid var(--amber); border-right:2px solid var(--amber)}
+.preview::before{top:9px; left:9px; border-top:2px solid var(--sky); border-left:2px solid var(--sky)}
+.preview::after{bottom:9px; right:9px; border-bottom:2px solid var(--sky); border-right:2px solid var(--sky)}
 .load{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-      background:rgba(12,16,23,.62)}
+      background:rgba(255,255,255,.66)}
 .spin{width:24px; height:24px; border-radius:50%;
-      border:3px solid #33405a; border-top-color:var(--amber); animation:sp .8s linear infinite}
+      border:3px solid #d7e5f3; border-top-color:var(--sky); animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-/* --- [EN] Terminal readout of the live URL / [FR] Terminal affichant l'URL --- */
-.term{margin-top:14px; background:#080b11; border:1px solid var(--line); border-radius:8px;
+/* --- [EN] Readout of the live URL / [FR] Affichage de l'URL en cours --- */
+.term{margin-top:14px; background:var(--panel2); border:1px solid var(--line); border-radius:9px;
       padding:11px 12px; font-family:var(--mono); font-size:11px; line-height:1.65;
-      color:#9fd0ff; word-break:break-all; max-height:132px; overflow:auto}
-.term .k{color:var(--amber)}
+      color:#3d5a78; word-break:break-all; max-height:132px; overflow:auto}
+.term .k{color:var(--sky-dark); font-weight:600}
 
 /* --- [EN] Form controls / [FR] Contrôles de formulaire -------------- */
 .field{margin-bottom:15px}
 .field>label{display:block; font-family:var(--mono); font-size:10.5px; letter-spacing:.13em;
   text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:6px}
-.field small{display:block; color:#6f7c92; font-size:11.5px; margin-top:5px}
+.field small{display:block; color:#8494a8; font-size:11.5px; margin-top:5px}
 .row{display:grid; grid-template-columns:1fr 1fr; gap:14px}
 @media(max-width:600px){.row{grid-template-columns:1fr}}
 input[type=text],input[type=number],select{
-  width:100%; background:var(--panel2); color:var(--text); border:1px solid var(--line);
-  border-radius:8px; padding:10px 12px; font-size:13.5px; font-family:var(--body); outline:none}
+  width:100%; background:#fff; color:var(--text); border:1px solid #d9e4ef;
+  border-radius:9px; padding:10px 12px; font-size:13.5px; font-family:var(--body); outline:none;
+  transition:border-color .15s, box-shadow .15s}
 input[type=text]{font-family:var(--mono); font-size:12.5px}
+input[type=text]:hover,input[type=number]:hover,select:hover{border-color:#bed3e7}
 input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{
-  outline:2px solid var(--blue); outline-offset:2px}
-input::placeholder{color:#5d6980}
+  outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(47,155,240,.22)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--sky); outline-offset:2px}
+input::placeholder{color:#a9b8c9}
 select{appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),
   linear-gradient(135deg,var(--muted) 50%,transparent 50%);
   background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;
   background-size:5px 5px,5px 5px; background-repeat:no-repeat; padding-right:34px}
-input[type=color]{width:100%; height:42px; padding:3px; background:var(--panel2);
-  border:1px solid var(--line); border-radius:8px}
+input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
+  border:1px solid #d9e4ef; border-radius:9px; cursor:pointer}
 
 .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; cursor:pointer;
-  border:1px solid var(--line); background:var(--panel2); color:var(--text); border-radius:8px;
+  border:1px solid #d9e4ef; background:#fff; color:var(--text); border-radius:9px;
   padding:10px 14px; font-size:12.5px; font-weight:600; font-family:var(--body); text-decoration:none;
-  transition:border-color .15s,background .15s}
-.btn:hover{border-color:#3d4d6d; background:#212a3c}
-.btn-primary{background:var(--amber); border-color:var(--amber); color:#191203; font-weight:700}
-.btn-primary:hover{background:#ffc247; border-color:#ffc247}
+  transition:border-color .15s, background .15s, color .15s}
+.btn:hover{border-color:var(--sky); color:var(--sky-dark); background:var(--sky-soft)}
+.btn-primary{background:var(--sky); border-color:var(--sky); color:#fff; font-weight:700}
+.btn-primary:hover{background:var(--sky-dark); border-color:var(--sky-dark); color:#fff}
 .btn-block{display:flex; width:100%}
 .btnRow{display:flex; gap:8px; flex-wrap:wrap}
 .btnRow .btn{flex:1; min-width:120px}
@@ -190,43 +195,45 @@ input[type=color]{width:100%; height:42px; padding:3px; background:var(--panel2)
 /* --- [EN] Direction pickers / [FR] Sélecteurs de direction ---------- */
 .dirs{display:grid; grid-template-columns:repeat(8,1fr); gap:6px}
 @media(max-width:1200px){.dirs{grid-template-columns:repeat(4,1fr)}}
-.dir{position:relative; border:2px solid var(--line); border-radius:8px; background:var(--panel2);
-  cursor:pointer; padding:2px; overflow:hidden; transition:border-color .15s,background .15s}
-.dir:hover{border-color:#3d4d6d}
-.dir.on{border-color:var(--amber); background:#2a2416}
+.dir{position:relative; border:1px solid #dde8f2; border-radius:9px; background:#fff;
+  cursor:pointer; padding:2px; overflow:hidden; transition:border-color .15s, background .15s, box-shadow .15s}
+.dir:hover{border-color:#b6d3ee; background:var(--panel2)}
+.dir.on{border-color:var(--sky); background:var(--sky-soft); box-shadow:0 0 0 2px rgba(47,155,240,.18)}
 .dir img{width:100%; display:block; image-rendering:pixelated; min-height:34px}
 .dir img:not([src]){display:none}
 .dir:has(img:not([src])){min-height:44px}
 .dir i{position:absolute; top:3px; left:4px; font-style:normal; font-family:var(--mono);
-  font-size:9px; color:var(--muted)}
-.dir.on i{color:var(--amber)}
+  font-size:9px; color:#a3b3c6}
+.dir.on i{color:var(--sky-dark)}
 
 /* --- [EN] Action chips / [FR] Puces d'action ------------------------ */
 .chips{display:flex; flex-wrap:wrap; gap:8px}
-.chip{border:1px solid var(--line); background:var(--panel2); color:var(--text); border-radius:999px;
-  padding:7px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:var(--body)}
-.chip:hover{border-color:#3d4d6d}
-.chip.on{border-color:var(--amber); background:#2a2416; color:var(--amber)}
+.chip{border:1px solid #d9e4ef; background:#fff; color:var(--text); border-radius:999px;
+  padding:7px 14px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:var(--body);
+  transition:border-color .15s, background .15s, color .15s}
+.chip:hover{border-color:#b6d3ee; background:var(--panel2)}
+.chip.on{border-color:var(--sky); background:var(--sky-soft); color:var(--sky-dark)}
 
 /* --- [EN] Inline messages / [FR] Messages en ligne ------------------ */
 .msg{margin-top:12px; font-size:13px; min-height:19px}
 .msg .ok{color:var(--ok); font-weight:600}
 .msg .err{color:var(--err)}
-.note{border:1px solid #3a3320; background:#1e1a10; color:#e7cf9a; border-radius:8px;
+.msg .wait{color:var(--muted)}
+.note{border:1px solid #cfe6fb; background:var(--sky-soft); color:#155a8a; border-radius:9px;
   padding:11px 13px; font-size:12.5px; margin-bottom:16px}
 .inline{display:flex; gap:8px}
 .inline input{flex:1}
 
 /* --- [EN] Username suggestions / [FR] Suggestions de pseudos -------- */
-.sugList{margin-top:6px; border:1px solid var(--line); border-radius:8px; background:var(--panel2);
-  overflow:hidden; max-height:262px; overflow-y:auto}
+.sugList{margin-top:6px; border:1px solid var(--line); border-radius:9px; background:#fff;
+  overflow:hidden; max-height:262px; overflow-y:auto; box-shadow:var(--shadow)}
 .sug{display:flex; align-items:center; gap:10px; width:100%; text-align:left; cursor:pointer;
   background:none; border:0; border-bottom:1px solid var(--line); padding:6px 10px;
   color:var(--text); font-family:var(--body); font-size:13px}
 .sug:last-child{border-bottom:0}
-.sug:hover{background:#232d40}
+.sug:hover{background:var(--sky-soft)}
 .sug img{width:28px; height:28px; object-fit:contain; image-rendering:pixelated; flex:none}
-.foot{max-width:1240px; margin:0 auto; padding:6px 22px 34px; color:#5d6980; font-size:11.5px;
+.foot{max-width:1240px; margin:0 auto; padding:6px 22px 34px; color:#93a3b6; font-size:11.5px;
   font-family:var(--mono); letter-spacing:.04em}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
 </style>
@@ -671,7 +678,7 @@ input[type=color]{width:100%; height:42px; padding:3px; background:var(--panel2)
       var u = (name || val('fUser') || '').trim();
       if (!u) { return; }
       hideSug();
-      $msg.innerHTML = '<span style="color:#8b98ae">Recherche de ' + u.replace(/[<>&]/g, '') + '…</span>';
+      $msg.innerHTML = '<span class="wait">Recherche de ' + u.replace(/[<>&]/g, '') + '…</span>';
       fetch(BASE + '/look?username=' + encodeURIComponent(u) + tokenQs, { headers: { 'Accept': 'application/json' } })
         .then(function (r) { return r.json(); })
         .then(function (d) {

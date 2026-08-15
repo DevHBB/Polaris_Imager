@@ -291,29 +291,33 @@ export const renderLoginPage = ({
 <meta name="robots" content="noindex, nofollow">
 <title>${ esc(title) } — Connexion</title>
 <style>
-:root{--ink:#0c1017;--panel:#141a25;--panel2:#1a2130;--line:#28324a;--text:#e9eef8;
-      --muted:#8b98ae;--amber:#ffb020;--err:#ff6f6f;
+:root{--bg:#f4f8fc;--panel:#ffffff;--panel2:#f7fafd;--line:#e2ebf4;--text:#16212f;
+      --muted:#69798e;--sky:#2f9bf0;--sky-dark:#1a7fd0;--err:#d63b46;
       --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
       --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-     background:var(--ink);color:var(--text);font-family:var(--body);
-     background-image:radial-gradient(circle at 50% 0%,rgba(255,176,32,.08),transparent 55%)}
+     background:var(--bg);color:var(--text);font-family:var(--body);
+     background-image:radial-gradient(circle at 50% -10%,rgba(47,155,240,.14),transparent 55%)}
 .box{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);
-     border-radius:12px;padding:26px}
+     border-radius:14px;padding:26px;
+     box-shadow:0 1px 2px rgba(20,40,70,.05),0 14px 34px -20px rgba(20,40,70,.4)}
 .brand{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.18em;
        text-transform:uppercase;margin:0 0 4px}
-.brand b{color:var(--amber)}
+.brand b{color:var(--sky)}
 p.sub{color:var(--muted);font-size:12.5px;margin:0 0 22px}
 label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
       text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 6px}
-input{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);
-      border-radius:8px;padding:11px 12px;font-size:14px;margin-bottom:16px;outline:none}
-input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-button{width:100%;cursor:pointer;background:var(--amber);border:1px solid var(--amber);
-       color:#191203;border-radius:8px;padding:12px;font-size:13.5px;font-weight:700;
-       font-family:var(--body)}
-button:hover{background:#ffc247}
+input{width:100%;background:#fff;color:var(--text);border:1px solid #d9e4ef;
+      border-radius:9px;padding:11px 12px;font-size:14px;margin-bottom:16px;outline:none;
+      transition:border-color .15s,box-shadow .15s}
+input:hover{border-color:#bed3e7}
+input:focus-visible{border-color:var(--sky);box-shadow:0 0 0 3px rgba(47,155,240,.22)}
+button{width:100%;cursor:pointer;background:var(--sky);border:1px solid var(--sky);
+       color:#fff;border-radius:9px;padding:12px;font-size:13.5px;font-weight:700;
+       font-family:var(--body);transition:background .15s,border-color .15s}
+button:hover{background:var(--sky-dark);border-color:var(--sky-dark)}
+button:focus-visible{outline:2px solid var(--sky-dark);outline-offset:2px}
 .err{color:var(--err);font-size:13px;margin:0 0 16px}
 </style>
 </head>
