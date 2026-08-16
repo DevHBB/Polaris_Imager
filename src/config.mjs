@@ -73,6 +73,21 @@ export const CONFIG = {
     maxActionLength: int(env.AVATAR_IMAGING_MAX_ACTION_LEN, 256),
     maxTextLength: int(env.AVATAR_IMAGING_MAX_TEXT_LEN, 100),
 
+    scene: {
+        enabled: env.AVATAR_IMAGING_SCENE === undefined ? true : bool(env.AVATAR_IMAGING_SCENE),
+        path: (env.AVATAR_IMAGING_SCENE_PATH || '/scene').trim(),
+        maxLayers: int(env.AVATAR_IMAGING_SCENE_MAX_LAYERS, 24),
+        maxSize: int(env.AVATAR_IMAGING_SCENE_MAX_SIZE, 2000),
+        maxPayload: int(env.AVATAR_IMAGING_SCENE_MAX_PAYLOAD, 16000),
+        maxImageBytes: int(env.AVATAR_IMAGING_SCENE_MAX_IMAGE_BYTES, 4 * 1024 * 1024),
+        imageTimeoutMs: int(env.AVATAR_IMAGING_SCENE_IMAGE_TIMEOUT_MS, 8000),
+        imageHosts: list(env.AVATAR_IMAGING_SCENE_IMAGE_HOSTS, [])
+    },
+
+    wardrobe: {
+        enabled: env.AVATAR_IMAGING_WARDROBE === undefined ? true : bool(env.AVATAR_IMAGING_WARDROBE)
+    },
+
     generate: {
 
         enabled: env.AVATAR_IMAGING_GENERATE_UI === undefined ? true : bool(env.AVATAR_IMAGING_GENERATE_UI),

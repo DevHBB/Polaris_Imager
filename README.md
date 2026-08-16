@@ -354,6 +354,50 @@ If you only set `AVATAR_IMAGING_API_KEYS`, the panel's own image requests need a
 key too; give it a dedicated one via `AVATAR_IMAGING_GENERATE_KEY` (it is
 visible in the page's HTML, so never an admin key).
 
+### Scene composer — `GET /Generate/scene`
+
+A layer-based composer opened from the **Create a scene** button in the panel
+header. A layer is an avatar, an image or a line of text; a single avatar on a
+transparent background is simply a one-layer scene.
+
+Drag layers on the canvas, reorder them front/back, scale, mirror, set opacity,
+and give each character its own direction, action, gesture, effect and speech
+bubble. The background is transparent, a solid colour or an image
+(cover/contain/stretch/tile).
+
+Two ways out:
+
+- **Download PNG** — composed in the browser, nothing hits the server.
+- **Scene URL** — `GET /scene?s=<encoded scene>` renders the whole thing
+  server-side and returns one PNG, so it can be embedded in an article with a
+  plain `<img>` tag. Cached and ETagged like `/avatarimage`.
+
+Scenes export as a still PNG. Individual avatars stay animatable through
+`/avatarimage`, but an assembled scene is not.
+
+```env
+AVATAR_IMAGING_SCENE=1
+AVATAR_IMAGING_SCENE_MAX_LAYERS=24
+AVATAR_IMAGING_SCENE_MAX_SIZE=2000
+AVATAR_IMAGING_SCENE_IMAGE_HOSTS=cdn.your-hotel.example,your-hotel.example
+```
+
+`AVATAR_IMAGING_SCENE_IMAGE_HOSTS` matters: the **server** fetches image layers
+and backgrounds when rendering `/scene`, so without an allow-list it would be an
+open proxy into your network. Empty (the default) means image layers work in the
+browser preview and in the PNG export, but are refused by the server render.
+Subdomains of a listed host are allowed.
+
+### Wardrobe
+
+Both the panel and the scene composer have a **Change clothes** button that opens
+a visual catalogue built from your own `FigureData.json`: categories down the
+side, one rendered thumbnail per item, gender and HC filters, and the palette of
+the selected piece as clickable swatches. Thumbnails load lazily as you scroll.
+
+Since browsing renders one image per item, keep `AVATAR_IMAGING_RATELIMIT_MAX`
+generous (600+). Set `AVATAR_IMAGING_WARDROBE=0` to hide the feature.
+
 ### Query parameters
 
 `figure` (required) · `action=wlk,wav,drk=1` · `gesture=std|agr|sad|sml|srp` ·

@@ -1,3 +1,4 @@
+import { WARDROBE_CSS, WARDROBE_JS } from './wardrobe-widget.mjs';
 const esc = (value) => String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -13,6 +14,8 @@ export const renderGeneratePage = ({
     lookupEnabled = false,
     searchEnabled = false,
     logoutEnabled = false,
+    sceneEnabled = false,
+    wardrobeEnabled = false,
     apiKey = '',
     token = '',
     title = 'Avatar Studio',
@@ -171,6 +174,7 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
 .foot{max-width:1240px; margin:0 auto; padding:6px 22px 34px; color:#93a3b6; font-size:11.5px;
   font-family:var(--mono); letter-spacing:.04em}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+${ WARDROBE_CSS }
 </style>
 </head>
 <body>
@@ -179,6 +183,9 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
   <div class="topIn">
     <div class="brand"><b>&#9632;</b> ${esc(title)}</div>
     <div class="tagline">nitro render &middot; @pixi/node &middot; /avatarimage</div>
+    ${ sceneEnabled
+        ? `<a class="btn btn-primary" style="padding:6px 12px;font-size:12px" href="${ esc(base) }/scene" data-i18n="createScene">Create a scene</a>`
+        : '' }
     ${ logoutEnabled
 
         ? `<a class="btn" style="padding:6px 12px;font-size:12px" href="${ esc(base) }/logout" data-i18n="logout">Sign out</a>`
@@ -234,6 +241,9 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
           <small data-i18n="figureHint">Editable directly.</small>
         </div>
       </div>
+      ${ wardrobeEnabled
+          ? '<button type="button" class="btn btn-block" id="openWardrobe" style="margin-top:4px" data-i18n="openWardrobe">Change clothes</button>'
+          : '' }
     </div>
 
     <div class="card">
@@ -367,6 +377,7 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
   var SEARCH   = ${js(searchEnabled)};
   var API_KEY  = ${js(apiKey)};
   var TOKEN    = ${js(token)};
+  var WARDROBE = ${js(wardrobeEnabled)};
   var PRESET   = ${js(query)};
 
   var $ = function (id) { return document.getElementById(id); };
@@ -402,7 +413,8 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
       notFound: 'Player not found.', lookupDown: 'Lookup unavailable.',
       copied: 'Copied!', tagCopied: 'Tag copied!', linkCopied: 'Link copied!',
       copyDenied: 'Copy blocked by the browser (HTTPS required).',
-      direction: 'Direction', previewAlt: 'Avatar preview'
+      direction: 'Direction', previewAlt: 'Avatar preview',
+      createScene: 'Create a scene', openWardrobe: 'Change clothes', wardrobe: 'Wardrobe', close: 'Close', showHc: 'Show HC', removeItem: 'Remove', genderAll: 'All', genderMale: 'Male', genderFemale: 'Female', noItems: 'Nothing here with these filters.', loading: 'Loading…', wardrobeDown: 'Wardrobe unavailable.', cat_hd: 'Face', cat_hr: 'Hair', cat_ha: 'Hat', cat_he: 'Head accessory', cat_ea: 'Glasses', cat_fa: 'Face accessory', cat_ch: 'Shirt', cat_cc: 'Coat', cat_cp: 'Print', cat_ca: 'Chest accessory', cat_wa: 'Belt', cat_lg: 'Trousers', cat_sh: 'Shoes'
     },
     nl: {
       preview: 'Voorbeeld', copyUrl: 'Adres kopiëren', download: 'Downloaden',
@@ -432,7 +444,8 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
       notFound: 'Speler niet gevonden.', lookupDown: 'Zoeken niet beschikbaar.',
       copied: 'Gekopieerd!', tagCopied: 'Tag gekopieerd!', linkCopied: 'Link gekopieerd!',
       copyDenied: 'Kopiëren geblokkeerd door de browser (HTTPS vereist).',
-      direction: 'Richting', previewAlt: 'Avatarvoorbeeld'
+      direction: 'Richting', previewAlt: 'Avatarvoorbeeld',
+      createScene: 'Scène maken', openWardrobe: 'Kleding wijzigen', wardrobe: 'Kledingkast', close: 'Sluiten', showHc: 'HC tonen', removeItem: 'Verwijderen', genderAll: 'Alle', genderMale: 'Man', genderFemale: 'Vrouw', noItems: 'Niets met deze filters.', loading: 'Laden…', wardrobeDown: 'Kledingkast niet beschikbaar.', cat_hd: 'Gezicht', cat_hr: 'Haar', cat_ha: 'Hoed', cat_he: 'Hoofdaccessoire', cat_ea: 'Bril', cat_fa: 'Gezichtsaccessoire', cat_ch: 'Shirt', cat_cc: 'Jas', cat_cp: 'Print', cat_ca: 'Borstaccessoire', cat_wa: 'Riem', cat_lg: 'Broek', cat_sh: 'Schoenen'
     },
     es: {
       preview: 'Vista previa', copyUrl: 'Copiar URL', download: 'Descargar',
@@ -462,7 +475,8 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
       notFound: 'Jugador no encontrado.', lookupDown: 'Búsqueda no disponible.',
       copied: '¡Copiado!', tagCopied: '¡Etiqueta copiada!', linkCopied: '¡Enlace copiado!',
       copyDenied: 'Copia bloqueada por el navegador (se requiere HTTPS).',
-      direction: 'Dirección', previewAlt: 'Vista previa del avatar'
+      direction: 'Dirección', previewAlt: 'Vista previa del avatar',
+      createScene: 'Crear una escena', openWardrobe: 'Cambiar de ropa', wardrobe: 'Armario', close: 'Cerrar', showHc: 'Mostrar HC', removeItem: 'Quitar', genderAll: 'Todos', genderMale: 'Hombre', genderFemale: 'Mujer', noItems: 'Nada con estos filtros.', loading: 'Cargando…', wardrobeDown: 'Armario no disponible.', cat_hd: 'Cara', cat_hr: 'Pelo', cat_ha: 'Sombrero', cat_he: 'Accesorio de cabeza', cat_ea: 'Gafas', cat_fa: 'Accesorio facial', cat_ch: 'Camiseta', cat_cc: 'Abrigo', cat_cp: 'Estampado', cat_ca: 'Accesorio de pecho', cat_wa: 'Cinturón', cat_lg: 'Pantalón', cat_sh: 'Zapatos'
     },
     fr: {
       preview: 'Aperçu', copyUrl: "Copier l'adresse", download: 'Télécharger',
@@ -492,7 +506,8 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
       notFound: 'Joueur introuvable.', lookupDown: 'Recherche indisponible.',
       copied: 'Copié !', tagCopied: 'Balise copiée !', linkCopied: 'Lien copié !',
       copyDenied: 'Copie refusée par le navigateur (HTTPS requis).',
-      direction: 'Direction', previewAlt: "Aperçu de l'avatar"
+      direction: 'Direction', previewAlt: "Aperçu de l'avatar",
+      createScene: 'Créer une scène', openWardrobe: 'Changer de vêtements', wardrobe: 'Vestiaire', close: 'Fermer', showHc: 'Afficher les HC', removeItem: 'Retirer', genderAll: 'Tous', genderMale: 'Homme', genderFemale: 'Femme', noItems: 'Rien avec ces filtres.', loading: 'Chargement…', wardrobeDown: 'Vestiaire indisponible.', cat_hd: 'Visage', cat_hr: 'Cheveux', cat_ha: 'Chapeau', cat_he: 'Accessoire de tête', cat_ea: 'Lunettes', cat_fa: 'Accessoire de visage', cat_ch: 'Haut', cat_cc: 'Manteau', cat_cp: 'Motif', cat_ca: 'Accessoire de torse', cat_wa: 'Ceinture', cat_lg: 'Pantalon', cat_sh: 'Chaussures'
     },
     de: {
       preview: 'Vorschau', copyUrl: 'Adresse kopieren', download: 'Herunterladen',
@@ -522,7 +537,9 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
       notFound: 'Spieler nicht gefunden.', lookupDown: 'Suche nicht verfügbar.',
       copied: 'Kopiert!', tagCopied: 'Tag kopiert!', linkCopied: 'Link kopiert!',
       copyDenied: 'Kopieren vom Browser blockiert (HTTPS erforderlich).',
-      direction: 'Richtung', previewAlt: 'Avatar-Vorschau'
+      direction: 'Richtung', previewAlt: 'Avatar-Vorschau',
+      createScene: 'Szene erstellen', openWardrobe: 'Kleidung ändern', wardrobe: 'Kleiderschrank', close: 'Schließen', showHc: 'HC anzeigen', removeItem: 'Entfernen', genderAll: 'Alle', genderMale: 'Männlich', genderFemale: 'Weiblich', noItems: 'Nichts mit diesen Filtern.', loading: 'Lädt…', wardrobeDown: 'Kleiderschrank nicht verfügbar.', cat_hd: 'Gesicht', cat_hr: 'Haare', cat_ha: 'Hut', cat_he: 'Kopf-Accessoire', cat_ea: 'Brille', cat_fa: 'Gesichts-Accessoire', cat_ch: 'Oberteil', cat_cc: 'Mantel', cat_cp: 'Aufdruck', cat_ca: 'Brust-Accessoire', cat_wa: 'Gürtel', cat_lg: 'Hose', cat_sh: 'Schuhe',
+      createScene: 'Créer une scène', openWardrobe: 'Changer de vêtements', wardrobe: 'Vestiaire', close: 'Fermer', showHc: 'Afficher les HC', removeItem: 'Retirer', genderAll: 'Tous', genderMale: 'Homme', genderFemale: 'Femme', noItems: 'Rien avec ces filtres.', loading: 'Chargement…', wardrobeDown: 'Vestiaire indisponible.', cat_hd: 'Visage', cat_hr: 'Cheveux', cat_ha: 'Chapeau', cat_he: 'Accessoire de tête', cat_ea: 'Lunettes', cat_fa: 'Accessoire de visage', cat_ch: 'Haut', cat_cc: 'Manteau', cat_cp: 'Motif', cat_ca: 'Accessoire de torse', cat_wa: 'Ceinture', cat_lg: 'Pantalon', cat_sh: 'Chaussures'
     }
   };
 
@@ -861,6 +878,34 @@ input[type=color]{width:100%; height:42px; padding:3px; background:#fff;
     });
     if (p.text_color) { $('fTextColor').value = '#' + String(p.text_color).replace('#', ''); }
     if (p.bubble_color) { $('fBubbleColor').value = '#' + String(p.bubble_color).replace('#', ''); }
+  }
+
+${ WARDROBE_JS }
+
+  window.applyLang = applyLang;
+
+  if (WARDROBE) {
+    var wardrobe = createWardrobe({
+      dataUrl: BASE + '/figuredata' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : ''),
+      thumbUrl: function (figure, head) {
+        var p = { figure: figure, direction: 2, head_direction: 2, size: head ? 'n' : 's' };
+        if (head) { p.headonly = 1; }
+        return imageUrl(p);
+      }
+    });
+
+    var openBtn = $('openWardrobe');
+    if (openBtn) {
+      openBtn.addEventListener('click', function () {
+        wardrobe.open({
+          figure: function () { return $fig.value.trim(); },
+          apply: function (figure) {
+            $fig.value = figure;
+            refresh();
+          }
+        });
+      });
+    }
   }
 
   buildDirGrids();

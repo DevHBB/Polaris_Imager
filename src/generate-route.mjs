@@ -1,5 +1,7 @@
 import express from 'express';
 import { renderGeneratePage } from './generate-page.mjs';
+import { renderScenePage } from './scene-page.mjs';
+import { getFigureData } from './figuredata.mjs';
 import { createAuth, renderLoginPage, safeEqual } from './generate-auth.mjs';
 import { makeClientIp } from './security.mjs';
 import { findUserByName, searchUsers } from './db.mjs';
@@ -66,6 +68,8 @@ export const createGenerateRouter = (CONFIG) => {
     const lookupAvailable = db.enabled || Boolean(gen.lookupUrl);
 
     const searchAvailable = db.enabled;
+    const sceneAvailable = CONFIG.scene.enabled;
+    const wardrobeAvailable = CONFIG.wardrobe.enabled;
 
     const isSecure = (req) => req.secure || req.get('x-forwarded-proto') === 'https';
 
@@ -170,6 +174,8 @@ export const createGenerateRouter = (CONFIG) => {
             lookupEnabled: lookupAvailable,
             searchEnabled: searchAvailable,
             logoutEnabled: gen.authEnabled,
+            sceneEnabled: sceneAvailable,
+            wardrobeEnabled: wardrobeAvailable,
             apiKey: gen.uiApiKey,
             token: gen.token,
             title: gen.title,
@@ -293,6 +299,51 @@ export const createGenerateRouter = (CONFIG) => {
             return res.status(502).json({ ok: false, error: 'Base de données injoignable.' });
         }
     });
+
+    if (sceneAvailable) {
+        router.get('/scene', (req, res) => {
+            const html = renderScenePage({
+                imagerUrl,
+                sceneUrl: gen.publicUrl ? `${ gen.publicUrl }${ CONFIG.scene.path }` : CONFIG.scene.path,
+                base: req.baseUrl,
+                lookupEnabled: lookupAvailable,
+                searchEnabled: searchAvailable,
+                wardrobeEnabled: wardrobeAvailable,
+                logoutEnabled: gen.authEnabled,
+                imageHosts: CONFIG.scene.imageHosts,
+                apiKey: gen.uiApiKey,
+                token: gen.token,
+                title: gen.title,
+                figure: gen.defaultFigure,
+                maxLayers: CONFIG.scene.maxLayers
+            });
+
+            res.set('Cache-Control', 'no-store');
+            res.set(
+                'Content-Security-Policy',
+                "default-src 'none'; img-src 'self' data: https: http:; style-src 'unsafe-inline'; " +
+                "script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'"
+            );
+
+            return res.type('text/html; charset=utf-8').send(html);
+        });
+    }
+
+    if (wardrobeAvailable) {
+        router.get('/figuredata', async (req, res) => {
+            try {
+                const data = await getFigureData();
+
+                res.set('Cache-Control', 'private, max-age=900');
+
+                return res.json({ ok: true, data });
+            } catch (error) {
+                console.error('[pixinode] figuredata failed:', error?.message || error);
+
+                return res.status(502).json({ ok: false, error: 'Figuredata unavailable.' });
+            }
+        });
+    }
 
     return router;
 };

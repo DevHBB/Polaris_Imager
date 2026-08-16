@@ -10,6 +10,7 @@ import { createAccessLogger } from './logger.mjs';
 import { createGenerateRouter } from './generate-route.mjs';
 
 import { checkDatabase, closeDatabase } from './db.mjs';
+import { decodeScene, renderScene, SceneError } from './scene.mjs';
 
 class ResponseCache {
     #map = new Map();
@@ -145,6 +146,14 @@ app.get('/', (req, res) => {
 
             ...(CONFIG.generate.enabled
                 ? [`GET ${ CONFIG.generate.path }`, '  Browser UI to build a figure and copy/download the image.', '']
+                : []),
+            ...(CONFIG.scene.enabled
+                ? [
+                    `GET ${ CONFIG.scene.path }?s=<encoded scene>`,
+                    '  Renders several avatars, images and text into one PNG.',
+                    `  Built visually in ${ CONFIG.generate.path }/scene`,
+                    ''
+                ]
                 : [])
         ].join('\n')
     );
@@ -225,6 +234,58 @@ app.get('/avatarimage', cors, rateLimiter, apiKeyGuard, async (req, res) => {
         return res.status(500).type('text/plain').send('Render failed.');
     }
 });
+
+if (CONFIG.scene.enabled) {
+    app.get(CONFIG.scene.path, cors, rateLimiter, apiKeyGuard, async (req, res) => {
+        let scene;
+
+        try {
+            scene = decodeScene(Array.isArray(req.query.s) ? req.query.s[0] : req.query.s);
+        } catch (error) {
+            const message = error instanceof SceneError ? error.message : 'Bad scene.';
+
+            return res.status(400).type('text/plain').send(message);
+        }
+
+        const cacheKey = `scene:${ JSON.stringify(scene) }`;
+        const etag = `"${ createHash('sha1').update(`${ cacheKey }|${ CONFIG.assetVersion }`).digest('base64') }"`;
+
+        res.set('ETag', etag);
+        res.set('Cache-Control', `public, max-age=${ Math.floor(CONFIG.cacheTtlMs / 1000) }`);
+
+        if (req.headers['if-none-match'] === etag) {
+            res.set('X-Cache', 'REVALIDATED');
+
+            return res.status(304).end();
+        }
+
+        const cached = cache.get(cacheKey);
+
+        if (cached) return sendImage(res, cached.buffer, false, 'HIT');
+
+        if (!renderer.ready) return res.status(503).type('text/plain').send('Renderer still starting, try again shortly.');
+
+        try {
+            const buffer = await renderScene(scene, renderer);
+
+            cache.set(cacheKey, { buffer, animated: false });
+
+            return sendImage(res, buffer, false, 'MISS');
+        } catch (error) {
+            if (error instanceof SceneError) return res.status(400).type('text/plain').send(error.message);
+
+            if (error?.code === 'OVERLOADED') {
+                res.set('Retry-After', '2');
+
+                return res.status(503).type('text/plain').send('Server busy, try again shortly.');
+            }
+
+            console.error('[pixinode] scene render failed:', error?.message || error);
+
+            return res.status(500).type('text/plain').send('Scene render failed.');
+        }
+    });
+}
 
 const preflightGamedata = async () => {
     const cfg = buildRendererConfig();
