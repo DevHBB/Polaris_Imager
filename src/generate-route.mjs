@@ -2,6 +2,7 @@ import express from 'express';
 import { renderGeneratePage } from './generate-page.mjs';
 import { renderScenePage } from './scene-page.mjs';
 import { getFigureData } from './figuredata.mjs';
+import { fetchImageBuffer, hostAllowed, SceneError } from './scene.mjs';
 import { createAuth, renderLoginPage, safeEqual } from './generate-auth.mjs';
 import { makeClientIp } from './security.mjs';
 import { findUserByName, searchUsers } from './db.mjs';
@@ -12,7 +13,7 @@ const USERNAME_RE = /^[A-Za-z0-9 ._:@-]{1,64}$/;
 
 const PRESET_KEYS = [
     'figure', 'action', 'gesture', 'direction', 'head_direction', 'headonly',
-    'dance', 'effect', 'size', 'frame_num', 'img_format', 'text', 'text_color', 'bubble_color'
+    'dance', 'effect', 'size', 'frame_num', 'img_format', 'text', 'text_color', 'bubble_color', 'bg_color'
 ];
 
 const first = (value) => (Array.isArray(value) ? value[0] : value);
@@ -174,6 +175,7 @@ export const createGenerateRouter = (CONFIG) => {
             lookupEnabled: lookupAvailable,
             searchEnabled: searchAvailable,
             logoutEnabled: gen.authEnabled,
+            publicUrl: gen.publicUrl,
             sceneEnabled: sceneAvailable,
             wardrobeEnabled: wardrobeAvailable,
             apiKey: gen.uiApiKey,
@@ -310,6 +312,7 @@ export const createGenerateRouter = (CONFIG) => {
                 searchEnabled: searchAvailable,
                 wardrobeEnabled: wardrobeAvailable,
                 logoutEnabled: gen.authEnabled,
+                publicUrl: gen.publicUrl,
                 imageHosts: CONFIG.scene.imageHosts,
                 apiKey: gen.uiApiKey,
                 token: gen.token,
@@ -326,6 +329,31 @@ export const createGenerateRouter = (CONFIG) => {
             );
 
             return res.type('text/html; charset=utf-8').send(html);
+        });
+    }
+
+    if (sceneAvailable) {
+        router.get('/image', async (req, res) => {
+            const url = first(req.query.u) ?? '';
+
+            if (!hostAllowed(url)) {
+                return res.status(403).type('text/plain').send(CONFIG.scene.imageHosts.length
+                    ? `Host not allowed. Allowed: ${ CONFIG.scene.imageHosts.join(', ') }.`
+                    : 'No image host is configured (AVATAR_IMAGING_SCENE_IMAGE_HOSTS).');
+            }
+
+            try {
+                const { buffer, type } = await fetchImageBuffer(url);
+
+                res.set('Cache-Control', 'private, max-age=600');
+                res.type(type);
+
+                return res.send(buffer);
+            } catch (error) {
+                const message = error instanceof SceneError ? error.message : 'Could not load that image.';
+
+                return res.status(502).type('text/plain').send(message);
+            }
         });
     }
 

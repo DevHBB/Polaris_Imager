@@ -147,6 +147,11 @@ export const parseAvatarParams = (query, { defaultFigure = null, maxFigureLength
     const textColor = parseHexColor(first(query.text_color), 0x000000);
     const bubbleColor = parseHexColor(first(query.bubble_color), 0xffffff);
 
+    const bgRaw = (first(query.bg_color) ?? '').toString().trim();
+    const background = bgRaw && bgRaw.toLowerCase() !== 'transparent'
+        ? parseHexColor(bgRaw, null)
+        : null;
+
     return {
         figure,
         gender,
@@ -165,6 +170,7 @@ export const parseAvatarParams = (query, { defaultFigure = null, maxFigureLength
         format,
         text,
         textColor,
-        bubbleColor
+        bubbleColor,
+        background
     };
 };

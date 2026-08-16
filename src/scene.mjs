@@ -56,7 +56,7 @@ export const decodeScene = (encoded) => {
     return normalizeScene(parsed);
 };
 
-const hostAllowed = (url) => {
+export const hostAllowed = (url) => {
     if (!CONFIG.scene.imageHosts.length) return false;
 
     let parsed;
@@ -69,22 +69,27 @@ const hostAllowed = (url) => {
 
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
 
+    if (CONFIG.scene.imageHosts.includes('*')) return true;
+
     return CONFIG.scene.imageHosts.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${ host }`));
 };
+
+const allowedHostsMessage = (what) => (CONFIG.scene.imageHosts.length
+    ? `${ what } host not allowed. Allowed: ${ CONFIG.scene.imageHosts.join(', ') }. Add it to AVATAR_IMAGING_SCENE_IMAGE_HOSTS.`
+    : `${ what } host not allowed: no host is configured. Set AVATAR_IMAGING_SCENE_IMAGE_HOSTS.`);
 
 const normalizeLayer = (layer) => {
     const base = {
         x: num(layer.x, 0, -4000, 4000),
         y: num(layer.y, 0, -4000, 4000),
         s: num(layer.s, 100, 10, 800),
-        f: layer.f ? 1 : 0,
         o: num(layer.o, 100, 0, 100)
     };
 
     if (layer.t === 'i') {
         const url = String(layer.u || '');
 
-        if (!hostAllowed(url)) throw new SceneError('Image host not allowed.');
+        if (!hostAllowed(url)) throw new SceneError(allowedHostsMessage('Image layer'));
 
         return { ...base, t: 'i', u: url };
     }
@@ -136,21 +141,26 @@ export const normalizeScene = (scene) => {
     const background = scene.bg && typeof scene.bg === 'object' ? scene.bg : {};
     const backgroundUrl = background.i ? String(background.i) : '';
 
-    if (backgroundUrl && !hostAllowed(backgroundUrl)) throw new SceneError('Background image host not allowed.');
+    if (backgroundUrl && !hostAllowed(backgroundUrl)) throw new SceneError(allowedHostsMessage('Background image'));
 
     return {
         w: num(scene.w, 600, 32, CONFIG.scene.maxSize),
         h: num(scene.h, 400, 32, CONFIG.scene.maxSize),
+        a: scene.a ? 1 : 0,
+        smooth: scene.smooth === 0 ? 0 : 1,
         bg: {
             c: background.c ? hex(background.c, '#ffffff') : null,
             i: backgroundUrl || null,
-            m: ['cover', 'contain', 'stretch', 'tile'].includes(background.m) ? background.m : 'cover'
+            m: ['cover', 'contain', 'stretch', 'tile'].includes(background.m) ? background.m : 'cover',
+            x: num(background.x, 0, -4000, 4000),
+            y: num(background.y, 0, -4000, 4000),
+            s: num(background.s, 100, 10, 400)
         },
         l: layers.map(normalizeLayer)
     };
 };
 
-const renderAvatarLayer = async (renderer, layer) => {
+const renderAvatarLayer = async (renderer, layer, animate) => {
     const descriptor = parseAvatarParams(
         {
             figure: layer.figure,
@@ -163,7 +173,7 @@ const renderAvatarLayer = async (renderer, layer) => {
             dance: layer.dance || undefined,
             size: layer.size,
             frame_num: layer.frame_num,
-            img_format: 'png',
+            img_format: animate ? 'auto' : 'png',
             text: layer.text || undefined,
             text_color: layer.text_color,
             bubble_color: layer.bubble_color
@@ -180,16 +190,18 @@ const renderAvatarLayer = async (renderer, layer) => {
 
     if (!rendered?.frames?.length) throw new SceneError('The renderer produced no frames for a layer.');
 
-    return encodeFrames({
-        frames: [Buffer.from(rendered.frames[0], 'base64')],
+    const frames = (animate ? rendered.frames : [rendered.frames[0]]).map((frame) => encodeFrames({
+        frames: [Buffer.from(frame, 'base64')],
         width: rendered.width,
         height: rendered.height,
         delays: [0],
         postScale: descriptor.postScale
-    });
+    }));
+
+    return { frames, delays: rendered.delays || [] };
 };
 
-const fetchImage = async (url) => {
+export const fetchImageBuffer = async (url) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CONFIG.scene.imageTimeoutMs);
 
@@ -206,50 +218,82 @@ const fetchImage = async (url) => {
 
         if (buffer.length > CONFIG.scene.maxImageBytes) throw new SceneError('Image is too large.');
 
-        return await loadImage(buffer);
-    } catch (error) {
-        if (error instanceof SceneError) throw error;
-
-        throw new SceneError('Could not load an image layer.');
+        return { buffer, type };
     } finally {
         clearTimeout(timer);
     }
 };
 
-const drawBackground = async (ctx, scene) => {
+const fetchImage = async (url) => {
+    try {
+        const { buffer } = await fetchImageBuffer(url);
+
+        return await loadImage(buffer);
+    } catch (error) {
+        if (error instanceof SceneError) throw error;
+
+        throw new SceneError('Could not load an image layer.');
+    }
+};
+
+const setSmoothing = (ctx, on) => {
+    ctx.imageSmoothingEnabled = on;
+
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = on ? 'high' : 'low';
+    if ('quality' in ctx) ctx.quality = on ? 'best' : 'nearest';
+    if ('patternQuality' in ctx) ctx.patternQuality = on ? 'best' : 'nearest';
+};
+
+const drawBackground = async (ctx, scene, image) => {
     if (scene.bg.c) {
         ctx.fillStyle = scene.bg.c;
         ctx.fillRect(0, 0, scene.w, scene.h);
     }
 
-    if (!scene.bg.i) return;
+    if (!image) return;
 
-    const image = await fetchImage(scene.bg.i);
+    const zoom = (scene.bg.s || 100) / 100;
+    const offsetX = scene.bg.x || 0;
+    const offsetY = scene.bg.y || 0;
 
-    if (scene.bg.m === 'stretch') {
-        ctx.drawImage(image, 0, 0, scene.w, scene.h);
-
-        return;
-    }
+    ctx.save();
+    setSmoothing(ctx, scene.smooth !== 0);
 
     if (scene.bg.m === 'tile') {
-        for (let y = 0; y < scene.h; y += image.height) {
-            for (let x = 0; x < scene.w; x += image.width) ctx.drawImage(image, x, y);
+        const width = Math.max(1, image.width * zoom);
+        const height = Math.max(1, image.height * zoom);
+        const startX = ((offsetX % width) + width) % width - width;
+        const startY = ((offsetY % height) + height) % height - height;
+
+        for (let y = startY; y < scene.h; y += height) {
+            for (let x = startX; x < scene.w; x += width) ctx.drawImage(image, x, y, width, height);
         }
+
+        ctx.restore();
 
         return;
     }
 
-    const ratio = scene.bg.m === 'contain'
+    ctx.translate(offsetX, offsetY);
+
+    if (scene.bg.m === 'stretch') {
+        ctx.drawImage(image, 0, 0, scene.w * zoom, scene.h * zoom);
+        ctx.restore();
+
+        return;
+    }
+
+    const ratio = (scene.bg.m === 'contain'
         ? Math.min(scene.w / image.width, scene.h / image.height)
-        : Math.max(scene.w / image.width, scene.h / image.height);
+        : Math.max(scene.w / image.width, scene.h / image.height)) * zoom;
     const width = image.width * ratio;
     const height = image.height * ratio;
 
     ctx.drawImage(image, (scene.w - width) / 2, (scene.h - height) / 2, width, height);
+    ctx.restore();
 };
 
-const drawLayer = (ctx, layer, drawable) => {
+const drawLayer = (ctx, layer, drawable, smooth) => {
     ctx.save();
     ctx.globalAlpha = layer.o / 100;
     ctx.translate(layer.x, layer.y);
@@ -258,9 +302,6 @@ const drawLayer = (ctx, layer, drawable) => {
 
     if (layer.t === 't') {
         ctx.scale(scale, scale);
-
-        if (layer.f) ctx.scale(-1, 1);
-
         ctx.font = `${ layer.b ? 'bold ' : '' }${ layer.fs }px sans-serif`;
         ctx.fillStyle = layer.c;
         ctx.textBaseline = 'top';
@@ -271,40 +312,96 @@ const drawLayer = (ctx, layer, drawable) => {
         return;
     }
 
-    const width = drawable.width * scale;
-    const height = drawable.height * scale;
-
-    if (layer.f) {
-        ctx.translate(width, 0);
-        ctx.scale(-1, 1);
-    }
-
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(drawable, 0, 0, width, height);
+    setSmoothing(ctx, layer.t === 'i' && smooth);
+    ctx.drawImage(drawable, 0, 0, drawable.width * scale, drawable.height * scale);
     ctx.restore();
 };
 
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+const lcm = (a, b) => (a * b) / gcd(a, b);
+
 export const renderScene = async (scene, renderer) => {
-    const canvas = createCanvas(scene.w, scene.h);
-    const ctx = canvas.getContext('2d');
-
-    ctx.imageSmoothingEnabled = false;
-
-    await drawBackground(ctx, scene);
+    const animate = Boolean(scene.a);
+    const smooth = scene.smooth !== 0;
+    const prepared = [];
 
     for (const layer of scene.l) {
         if (layer.t === 't') {
-            drawLayer(ctx, layer, null);
+            prepared.push({ layer, frames: null });
 
             continue;
         }
 
-        const drawable = layer.t === 'i'
-            ? await fetchImage(layer.u)
-            : await loadImage(await renderAvatarLayer(renderer, layer));
+        if (layer.t === 'i') {
+            prepared.push({ layer, frames: [await fetchImage(layer.u)] });
 
-        drawLayer(ctx, layer, drawable);
+            continue;
+        }
+
+        const rendered = await renderAvatarLayer(renderer, layer, animate);
+
+        prepared.push({
+            layer,
+            frames: await Promise.all(rendered.frames.map((frame) => loadImage(frame))),
+            delays: rendered.delays
+        });
     }
 
-    return canvas.toBuffer('image/png');
+    let frameCount = 1;
+
+    if (animate) {
+        for (const entry of prepared) {
+            if (entry.frames && entry.frames.length > 1) {
+                frameCount = Math.min(CONFIG.maxFrames, lcm(frameCount, entry.frames.length));
+            }
+        }
+    }
+
+    const backgroundImage = scene.bg.i ? await fetchImage(scene.bg.i) : null;
+
+    const canvas = createCanvas(scene.w, scene.h);
+    const ctx = canvas.getContext('2d');
+
+    const paint = async (index) => {
+        ctx.clearRect(0, 0, scene.w, scene.h);
+
+        await drawBackground(ctx, scene, backgroundImage);
+
+        for (const entry of prepared) {
+            if (!entry.frames) {
+                drawLayer(ctx, entry.layer, null, smooth);
+
+                continue;
+            }
+
+            drawLayer(ctx, entry.layer, entry.frames[index % entry.frames.length], smooth);
+        }
+    };
+
+    if (frameCount <= 1) {
+        await paint(0);
+
+        return { buffer: canvas.toBuffer('image/png'), animated: false };
+    }
+
+    const longest = prepared.reduce((best, entry) => (
+        entry.frames && entry.frames.length > (best?.frames?.length || 0) ? entry : best
+    ), null);
+    const step = longest?.delays?.[0] || Math.round(1000 / CONFIG.animationFps);
+    const frames = [];
+
+    for (let index = 0; index < frameCount; index++) {
+        await paint(index);
+        frames.push(Buffer.from(ctx.getImageData(0, 0, scene.w, scene.h).data));
+    }
+
+    return {
+        buffer: encodeFrames({
+            frames,
+            width: scene.w,
+            height: scene.h,
+            delays: new Array(frameCount).fill(step)
+        }),
+        animated: true
+    };
 };

@@ -17,6 +17,7 @@ export const renderScenePage = ({
     searchEnabled = false,
     wardrobeEnabled = true,
     logoutEnabled = false,
+    publicUrl = '',
     imageHosts = [],
     apiKey = '',
     token = '',
@@ -146,6 +147,8 @@ input[type=range]{width:100%; accent-color:var(--sky)}
 .sug:last-child{border-bottom:0}
 .sug:hover{background:var(--sky-soft)}
 .sug img{width:26px; height:26px; object-fit:contain; image-rendering:pixelated; flex:none}
+.warn{margin-top:12px; border:1px solid #f2d49b; background:#fff8e8; color:#8a5c00;
+  border-radius:9px; padding:10px 12px; font-size:12.5px}
 .urlBox{background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:10px 11px;
   font-family:var(--mono); font-size:10.5px; line-height:1.6; color:#3d5a78; word-break:break-all;
   max-height:110px; overflow:auto; margin-top:10px}
@@ -198,6 +201,18 @@ ${ WARDROBE_CSS }
           <input type="number" id="cvH" value="420" min="32" max="2000"></div>
       </div>
       <div class="field">
+        <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-family:var(--body);font-size:13px;font-weight:600;color:var(--text)">
+          <input type="checkbox" id="cvAnim" style="width:auto"> <span data-i18n="animateScene">Animate the scene</span>
+        </label>
+        <small data-i18n="animateHint">Dances, effects and gestures play. Server render only.</small>
+      </div>
+      <div class="field">
+        <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-family:var(--body);font-size:13px;font-weight:600;color:var(--text)">
+          <input type="checkbox" id="cvSmooth" checked style="width:auto"> <span data-i18n="smoothImages">Smooth imported images</span>
+        </label>
+        <small data-i18n="smoothHint">Avoids a pixelated background. Avatars always stay pixel-sharp.</small>
+      </div>
+      <div class="field">
         <label for="bgMode" data-i18n="background">Background</label>
         <select id="bgMode">
           <option value="none" data-i18n="bgNone">Transparent</option>
@@ -213,8 +228,10 @@ ${ WARDROBE_CSS }
         <div class="field">
           <label for="bgUrl" data-i18n="imageUrl">Image URL</label>
           <input type="text" id="bgUrl" placeholder="https://…">
+          <button type="button" class="btn sm btn-block" id="bgPick" style="margin-top:8px" data-i18n="importFile">Import from my computer</button>
+          <input type="file" id="bgFile" accept="image/*" style="display:none">
         </div>
-        <div class="field" style="margin-bottom:0">
+        <div class="field">
           <label for="bgFit" data-i18n="fit">Fit</label>
           <select id="bgFit">
             <option value="cover" data-i18n="fitCover">Cover</option>
@@ -222,6 +239,18 @@ ${ WARDROBE_CSS }
             <option value="stretch" data-i18n="fitStretch">Stretch</option>
             <option value="tile" data-i18n="fitTile">Tile</option>
           </select>
+        </div>
+        <div class="row">
+          <div class="field"><label for="bgX">X</label><input type="number" id="bgX" value="0"></div>
+          <div class="field"><label for="bgY">Y</label><input type="number" id="bgY" value="0"></div>
+        </div>
+        <div class="field">
+          <label for="bgZoom"><span data-i18n="zoom">Zoom</span> <span id="bgZoomVal" class="hint">100%</span></label>
+          <input type="range" id="bgZoom" min="10" max="400" value="100">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <button type="button" class="btn sm btn-block" id="bgReset" data-i18n="resetBg">Recentre the background</button>
+          <small data-i18n="bgDragHint">You can also drag the background directly on the canvas.</small>
         </div>
       </div>
     </div>
@@ -235,6 +264,7 @@ ${ WARDROBE_CSS }
         <button type="button" class="btn" id="copyScene" data-i18n="copySceneUrl">Copy scene URL</button>
         <a class="btn" id="openScene" target="_blank" rel="noopener" data-i18n="openServer">Server render</a>
       </div>
+      <div class="warn" id="hostWarn" style="display:none"></div>
       <div class="urlBox" id="sceneUrlBox">—</div>
       <div class="msg" id="msg"></div>
     </div>
@@ -259,7 +289,6 @@ ${ WARDROBE_CSS }
           <input type="range" id="pO" min="0" max="100" value="100">
         </div>
         <div class="btnRow" style="margin-bottom:14px">
-          <button type="button" class="btn sm" id="pFlip" data-i18n="flip">Flip</button>
           <button type="button" class="btn sm" id="pDup" data-i18n="duplicate">Duplicate</button>
           <button type="button" class="btn sm" id="pDel" data-i18n="delete">Delete</button>
         </div>
@@ -353,6 +382,8 @@ ${ WARDROBE_CSS }
           <div class="field" style="margin-bottom:0">
             <label for="pUrl" data-i18n="imageUrl">Image URL</label>
             <input type="text" id="pUrl" placeholder="https://…">
+            <button type="button" class="btn sm btn-block" id="imgPick" style="margin-top:8px" data-i18n="importFile">Import from my computer</button>
+            <input type="file" id="imgFile" accept="image/*" style="display:none">
             <small id="hostHint"></small>
           </div>
         </div>
@@ -395,6 +426,7 @@ ${ WARDROBE_CSS }
   var TOKEN = ${ js(token) };
   var HOSTS = ${ js(imageHosts) };
   var MAX_LAYERS = ${ js(maxLayers) };
+  var PUBLIC = ${ js(publicUrl) };
   var START_FIGURE = ${ js(figure) };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -409,7 +441,7 @@ ${ WARDROBE_CSS }
       fitStretch: 'Stretch', fitTile: 'Tile',
       downloadPng: 'Download PNG', copySceneUrl: 'Copy scene URL', openServer: 'Server render',
       properties: 'Properties', selectLayer: 'Select a layer, or add a character.',
-      scale: 'Scale', opacity: 'Opacity', flip: 'Flip', duplicate: 'Duplicate', delete: 'Delete',
+      scale: 'Scale', opacity: 'Opacity', duplicate: 'Duplicate', delete: 'Delete',
       figure: 'Figure', openWardrobe: 'Change clothes', bodyDir: 'Body direction', headDir: 'Head direction',
       action: 'Action', none: 'None', walk: 'Walk', sit: 'Sit', lay: 'Lie down', wave: 'Wave',
       drink: 'Drink', carry: 'Carry', expression: 'Expression', gestureNormal: 'Normal',
@@ -428,6 +460,22 @@ ${ WARDROBE_CSS }
       maxLayers: 'Limit reached: {n} layers maximum.',
       taintedCanvas: 'The browser blocked the export because of an external image. Use the server render instead.',
       hostsHint: 'Server render allows: {hosts}', hostsNone: 'Server render allows no external image (nothing configured).',
+      hostBlocked: 'That image host is refused by the server for security. Allowed: {hosts}. It will be missing from the PNG and from the scene URL.',
+      hostBlockedNone: 'No image host is allowed yet, so external images stay out of the PNG and the scene URL. Set AVATAR_IMAGING_SCENE_IMAGE_HOSTS.',
+      importFile: 'Import from my computer',
+      localOnly: 'The imported image is in the preview and the PNG download, but cannot travel in the scene URL — the server never receives it.',
+      fileTooBig: 'That file is over 4 MB.',
+      fileFailed: 'Could not read that file.',
+      animateScene: 'Animate the scene',
+      animateHint: 'Dances, effects and gestures play. Rendered by the server, so imported images are left out.',
+      downloadApng: 'Download animation',
+      rendering: 'Rendering on the server…',
+      renderFailed: 'Server render failed.',
+      zoom: 'Zoom',
+      resetBg: 'Recentre the background',
+      bgDragHint: 'You can also drag the background directly on the canvas.',
+      smoothImages: 'Smooth imported images',
+      smoothHint: 'Avoids a pixelated background when it is scaled down. Avatars always stay pixel-sharp.',
       emptyScene: 'No layer yet.', exported: 'Image downloaded.',
       wardrobe: 'Wardrobe', close: 'Close', showHc: 'Show HC', removeItem: 'Remove',
       genderAll: 'All', genderMale: 'Male', genderFemale: 'Female',
@@ -445,7 +493,7 @@ ${ WARDROBE_CSS }
       fitStretch: 'Uitrekken', fitTile: 'Herhalen',
       downloadPng: 'PNG downloaden', copySceneUrl: 'Scène-URL kopiëren', openServer: 'Serverrender',
       properties: 'Eigenschappen', selectLayer: 'Kies een laag of voeg een personage toe.',
-      scale: 'Schaal', opacity: 'Dekking', flip: 'Spiegelen', duplicate: 'Dupliceren', delete: 'Verwijderen',
+      scale: 'Schaal', opacity: 'Dekking', duplicate: 'Dupliceren', delete: 'Verwijderen',
       figure: 'Figuur', openWardrobe: 'Kleding wijzigen', bodyDir: 'Richting lichaam', headDir: 'Richting hoofd',
       action: 'Actie', none: 'Geen', walk: 'Lopen', sit: 'Zitten', lay: 'Liggen', wave: 'Zwaaien',
       drink: 'Drinken', carry: 'Vasthouden', expression: 'Expressie', gestureNormal: 'Normaal',
@@ -464,6 +512,22 @@ ${ WARDROBE_CSS }
       maxLayers: 'Limiet bereikt: maximaal {n} lagen.',
       taintedCanvas: 'De browser blokkeerde de export vanwege een externe afbeelding. Gebruik de serverrender.',
       hostsHint: 'Serverrender staat toe: {hosts}', hostsNone: 'Serverrender staat geen externe afbeelding toe (niets ingesteld).',
+      hostBlocked: 'Die afbeeldingshost wordt door de server geweigerd om veiligheidsredenen. Toegestaan: {hosts}. Hij ontbreekt in de PNG en in de scène-URL.',
+      hostBlockedNone: 'Nog geen afbeeldingshost toegestaan, dus externe afbeeldingen ontbreken in de PNG en de scène-URL. Stel AVATAR_IMAGING_SCENE_IMAGE_HOSTS in.',
+      importFile: 'Vanaf mijn computer importeren',
+      localOnly: 'De geïmporteerde afbeelding zit in het voorbeeld en de PNG-download, maar kan niet mee in de scène-URL — de server krijgt hem nooit.',
+      fileTooBig: 'Dat bestand is groter dan 4 MB.',
+      fileFailed: 'Kon dat bestand niet lezen.',
+      animateScene: 'Scène animeren',
+      animateHint: 'Dansjes, effecten en gebaren spelen af. De server rendert, dus geïmporteerde afbeeldingen vallen weg.',
+      downloadApng: 'Animatie downloaden',
+      rendering: 'Renderen op de server…',
+      renderFailed: 'Serverrender mislukt.',
+      zoom: 'Zoom',
+      resetBg: 'Achtergrond centreren',
+      bgDragHint: 'Je kunt de achtergrond ook direct op het canvas slepen.',
+      smoothImages: 'Geïmporteerde afbeeldingen gladstrijken',
+      smoothHint: 'Voorkomt een pixelige achtergrond bij verkleinen. Avatars blijven altijd scherp per pixel.',
       emptyScene: 'Nog geen laag.', exported: 'Afbeelding gedownload.',
       wardrobe: 'Kledingkast', close: 'Sluiten', showHc: 'HC tonen', removeItem: 'Verwijderen',
       genderAll: 'Alle', genderMale: 'Man', genderFemale: 'Vrouw',
@@ -481,7 +545,7 @@ ${ WARDROBE_CSS }
       fitStretch: 'Estirar', fitTile: 'Mosaico',
       downloadPng: 'Descargar PNG', copySceneUrl: 'Copiar URL de la escena', openServer: 'Render del servidor',
       properties: 'Propiedades', selectLayer: 'Elige una capa o añade un personaje.',
-      scale: 'Escala', opacity: 'Opacidad', flip: 'Voltear', duplicate: 'Duplicar', delete: 'Eliminar',
+      scale: 'Escala', opacity: 'Opacidad', duplicate: 'Duplicar', delete: 'Eliminar',
       figure: 'Figura', openWardrobe: 'Cambiar de ropa', bodyDir: 'Dirección del cuerpo', headDir: 'Dirección de la cabeza',
       action: 'Acción', none: 'Ninguna', walk: 'Caminar', sit: 'Sentarse', lay: 'Tumbarse', wave: 'Saludar',
       drink: 'Beber', carry: 'Sostener', expression: 'Expresión', gestureNormal: 'Normal',
@@ -500,6 +564,22 @@ ${ WARDROBE_CSS }
       maxLayers: 'Límite alcanzado: máximo {n} capas.',
       taintedCanvas: 'El navegador bloqueó la exportación por una imagen externa. Usa el render del servidor.',
       hostsHint: 'El render del servidor permite: {hosts}', hostsNone: 'El render del servidor no permite imágenes externas (nada configurado).',
+      hostBlocked: 'El servidor rechaza ese host de imagen por seguridad. Permitidos: {hosts}. Faltará en el PNG y en la URL de la escena.',
+      hostBlockedNone: 'Aún no hay ningún host de imagen permitido, así que las imágenes externas no saldrán en el PNG ni en la URL de la escena. Configura AVATAR_IMAGING_SCENE_IMAGE_HOSTS.',
+      importFile: 'Importar desde mi ordenador',
+      localOnly: 'La imagen importada aparece en la vista previa y en la descarga PNG, pero no puede viajar en la URL de la escena: el servidor nunca la recibe.',
+      fileTooBig: 'Ese archivo supera los 4 MB.',
+      fileFailed: 'No se pudo leer ese archivo.',
+      animateScene: 'Animar la escena',
+      animateHint: 'Los bailes, efectos y gestos se reproducen. Lo renderiza el servidor, así que las imágenes importadas quedan fuera.',
+      downloadApng: 'Descargar la animación',
+      rendering: 'Renderizando en el servidor…',
+      renderFailed: 'Falló el render del servidor.',
+      zoom: 'Zoom',
+      resetBg: 'Recentrar el fondo',
+      bgDragHint: 'También puedes arrastrar el fondo directamente en el lienzo.',
+      smoothImages: 'Suavizar las imágenes importadas',
+      smoothHint: 'Evita un fondo pixelado al reducirlo. Los avatares siempre quedan nítidos píxel a píxel.',
       emptyScene: 'Aún no hay capas.', exported: 'Imagen descargada.',
       wardrobe: 'Armario', close: 'Cerrar', showHc: 'Mostrar HC', removeItem: 'Quitar',
       genderAll: 'Todos', genderMale: 'Hombre', genderFemale: 'Mujer',
@@ -517,7 +597,7 @@ ${ WARDROBE_CSS }
       fitStretch: 'Étirer', fitTile: 'Répéter',
       downloadPng: 'Télécharger le PNG', copySceneUrl: 'Copier l\\'URL de la scène', openServer: 'Rendu serveur',
       properties: 'Propriétés', selectLayer: 'Choisis un calque, ou ajoute un personnage.',
-      scale: 'Taille', opacity: 'Opacité', flip: 'Miroir', duplicate: 'Dupliquer', delete: 'Supprimer',
+      scale: 'Taille', opacity: 'Opacité', duplicate: 'Dupliquer', delete: 'Supprimer',
       figure: 'Figure', openWardrobe: 'Changer de vêtements', bodyDir: 'Direction du corps', headDir: 'Direction de la tête',
       action: 'Action', none: 'Aucune', walk: 'Marche', sit: 'Assis', lay: 'Allongé', wave: 'Salue',
       drink: 'Boit', carry: 'Tient', expression: 'Expression', gestureNormal: 'Normale',
@@ -535,7 +615,24 @@ ${ WARDROBE_CSS }
       notFound: 'Joueur introuvable.', lookupDown: 'Recherche indisponible.',
       maxLayers: 'Limite atteinte : {n} calques maximum.',
       taintedCanvas: 'Le navigateur a bloqué l\\'export à cause d\\'une image externe. Utilise le rendu serveur.',
-      hostsHint: 'Le rendu serveur autorise : {hosts}', hostsNone: 'Le rendu serveur n\\'autorise aucune image externe (rien de configuré).',
+      hostsHint: 'Le rendu serveur autorise : {hosts}',
+      hostsNone: "Le rendu serveur n'autorise aucune image externe (rien de configuré).",
+      hostBlocked: "Cet hébergeur d'image est refusé par le serveur pour des raisons de sécurité. Autorisés : {hosts}. L'image sera absente du PNG et de l'URL de la scène.",
+      hostBlockedNone: "Aucun hébergeur d'image n'est encore autorisé : les images externes resteront absentes du PNG et de l'URL de la scène. Renseigne AVATAR_IMAGING_SCENE_IMAGE_HOSTS.",
+      importFile: "Importer depuis mon ordinateur",
+      localOnly: "L'image importée est bien dans l'aperçu et dans le PNG téléchargé, mais elle ne peut pas voyager dans l'URL de la scène : le serveur ne la reçoit jamais.",
+      fileTooBig: 'Ce fichier dépasse 4 Mo.',
+      fileFailed: 'Impossible de lire ce fichier.',
+      animateScene: 'Animer la scène',
+      animateHint: "Les danses, effets et gestes s'animent. C'est le serveur qui rend, donc les images importées sont laissées de côté.",
+      downloadApng: "Télécharger l'animation",
+      rendering: 'Rendu sur le serveur…',
+      renderFailed: 'Le rendu serveur a échoué.',
+      zoom: 'Zoom',
+      resetBg: 'Recentrer le fond',
+      bgDragHint: "Tu peux aussi déplacer le fond directement à la souris sur la zone de travail.",
+      smoothImages: 'Lisser les images importées',
+      smoothHint: "Évite un fond pixelisé quand il est réduit. Les avatars restent toujours nets au pixel près.",
       emptyScene: 'Aucun calque pour le moment.', exported: 'Image téléchargée.',
       wardrobe: 'Vestiaire', close: 'Fermer', showHc: 'Afficher les HC', removeItem: 'Retirer',
       genderAll: 'Tous', genderMale: 'Homme', genderFemale: 'Femme',
@@ -553,7 +650,7 @@ ${ WARDROBE_CSS }
       fitStretch: 'Strecken', fitTile: 'Kacheln',
       downloadPng: 'PNG herunterladen', copySceneUrl: 'Szenen-URL kopieren', openServer: 'Server-Render',
       properties: 'Eigenschaften', selectLayer: 'Wähle eine Ebene oder füge eine Figur hinzu.',
-      scale: 'Größe', opacity: 'Deckkraft', flip: 'Spiegeln', duplicate: 'Duplizieren', delete: 'Löschen',
+      scale: 'Größe', opacity: 'Deckkraft', duplicate: 'Duplizieren', delete: 'Löschen',
       figure: 'Figur', openWardrobe: 'Kleidung ändern', bodyDir: 'Körperrichtung', headDir: 'Kopfrichtung',
       action: 'Aktion', none: 'Keine', walk: 'Gehen', sit: 'Sitzen', lay: 'Liegen', wave: 'Winken',
       drink: 'Trinken', carry: 'Halten', expression: 'Ausdruck', gestureNormal: 'Normal',
@@ -572,6 +669,22 @@ ${ WARDROBE_CSS }
       maxLayers: 'Grenze erreicht: maximal {n} Ebenen.',
       taintedCanvas: 'Der Browser hat den Export wegen eines externen Bildes blockiert. Nutze den Server-Render.',
       hostsHint: 'Server-Render erlaubt: {hosts}', hostsNone: 'Server-Render erlaubt keine externen Bilder (nichts konfiguriert).',
+      hostBlocked: 'Dieser Bild-Host wird vom Server aus Sicherheitsgründen abgelehnt. Erlaubt: {hosts}. Das Bild fehlt im PNG und in der Szenen-URL.',
+      hostBlockedNone: 'Noch kein Bild-Host erlaubt, externe Bilder fehlen daher im PNG und in der Szenen-URL. Setze AVATAR_IMAGING_SCENE_IMAGE_HOSTS.',
+      importFile: 'Von meinem Computer importieren',
+      localOnly: 'Das importierte Bild ist in der Vorschau und im PNG-Download, kann aber nicht in der Szenen-URL mitreisen — der Server erhält es nie.',
+      fileTooBig: 'Diese Datei ist größer als 4 MB.',
+      fileFailed: 'Diese Datei konnte nicht gelesen werden.',
+      animateScene: 'Szene animieren',
+      animateHint: 'Tänze, Effekte und Gesten laufen ab. Der Server rendert, importierte Bilder bleiben daher außen vor.',
+      downloadApng: 'Animation herunterladen',
+      rendering: 'Wird auf dem Server gerendert…',
+      renderFailed: 'Server-Render fehlgeschlagen.',
+      zoom: 'Zoom',
+      resetBg: 'Hintergrund zentrieren',
+      bgDragHint: 'Du kannst den Hintergrund auch direkt auf der Fläche ziehen.',
+      smoothImages: 'Importierte Bilder glätten',
+      smoothHint: 'Verhindert einen pixeligen Hintergrund beim Verkleinern. Avatare bleiben immer pixelscharf.',
       emptyScene: 'Noch keine Ebene.', exported: 'Bild heruntergeladen.',
       wardrobe: 'Kleiderschrank', close: 'Schließen', showHc: 'HC anzeigen', removeItem: 'Entfernen',
       genderAll: 'Alle', genderMale: 'Männlich', genderFemale: 'Weiblich',
@@ -613,6 +726,8 @@ ${ WARDROBE_CSS }
     for (var j = 0; j < nodes.length; j++) { nodes[j].setAttribute('placeholder', t(nodes[j].getAttribute('data-i18n-ph'))); }
     var sel = $('langSel');
     if (sel) { sel.value = LANG; }
+    var dl = $('dlPng');
+    if (dl) { dl.textContent = t(scene.a ? 'downloadApng' : 'downloadPng'); }
     renderLayerList();
     updateHostHint();
   }
@@ -633,7 +748,9 @@ ${ WARDROBE_CSS }
   var scene = {
     w: 700,
     h: 420,
-    bg: { c: null, i: null, m: 'cover' },
+    a: 0,
+    smooth: 1,
+    bg: { c: null, i: null, m: 'cover', x: 0, y: 0, s: 100 },
     l: []
   };
 
@@ -653,7 +770,7 @@ ${ WARDROBE_CSS }
       head_direction: layer.head_direction,
       gesture: layer.gesture || 'std',
       size: layer.size || 'n',
-      img_format: 'png'
+      img_format: scene.a ? 'auto' : 'png'
     };
     if (layer.action) { p.action = layer.action; }
     if (layer.headonly) { p.headonly = 1; }
@@ -671,9 +788,51 @@ ${ WARDROBE_CSS }
     return IMAGER + '?' + q;
   }
 
+  var bgSize = { url: null, w: 0, h: 0 };
+
+  function measureBg(done) {
+    if (bgSize.url === scene.bg.i) { done(bgSize.w, bgSize.h); return; }
+    var probe = new Image();
+    probe.onload = function () {
+      bgSize = { url: scene.bg.i, w: probe.naturalWidth, h: probe.naturalHeight };
+      done(bgSize.w, bgSize.h);
+    };
+    probe.onerror = function () { done(0, 0); };
+    probe.src = proxied(scene.bg.i);
+  }
+
+  function setSmoothing(ctx, on) {
+    ctx.imageSmoothingEnabled = on;
+    if ('imageSmoothingQuality' in ctx) { ctx.imageSmoothingQuality = on ? 'high' : 'low'; }
+  }
+
+  function isData(url) {
+    return String(url || '').slice(0, 5) === 'data:';
+  }
+
+  function hostOk(url) {
+    if (!url) { return true; }
+    if (isData(url)) { return true; }
+    try {
+      var u = new URL(url, location.href);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') { return false; }
+      if (u.origin === location.origin) { return true; }
+      return HOSTS.some(function (h) { return u.hostname === h || u.hostname.endsWith('.' + h); });
+    } catch (e) { return false; }
+  }
+
+  function proxied(url) {
+    if (!url) { return ''; }
+    if (isData(url)) { return url; }
+    try {
+      if (new URL(url, location.href).origin === location.origin) { return url; }
+    } catch (e) { return ''; }
+    return BASE + '/image?u=' + encodeURIComponent(url) + (TOKEN ? '&token=' + encodeURIComponent(TOKEN) : '');
+  }
+
   function newAvatar() {
     return {
-      id: ++seq, t: 'a', x: 40 + (scene.l.length % 5) * 30, y: 40, s: 100, f: 0, o: 100,
+      id: ++seq, t: 'a', x: 40 + (scene.l.length % 5) * 30, y: 40, s: 100, o: 100,
       figure: START_FIGURE, action: '', gesture: 'std', direction: 2, head_direction: 2,
       headonly: 0, effect: 0, dance: 0, size: 'n', frame_num: 0,
       text: '', text_color: '000000', bubble_color: 'ffffff'
@@ -681,11 +840,11 @@ ${ WARDROBE_CSS }
   }
 
   function newImage() {
-    return { id: ++seq, t: 'i', x: 40, y: 40, s: 100, f: 0, o: 100, u: '' };
+    return { id: ++seq, t: 'i', x: 40, y: 40, s: 100, o: 100, u: '' };
   }
 
   function newText() {
-    return { id: ++seq, t: 't', x: 40, y: 40, s: 100, f: 0, o: 100, v: 'Hello', c: '#16212f', fs: 22, b: 0 };
+    return { id: ++seq, t: 't', x: 40, y: 40, s: 100, o: 100, v: 'Hello', c: '#16212f', fs: 22, b: 0 };
   }
 
   function layerLabel(layer) {
@@ -758,7 +917,15 @@ ${ WARDROBE_CSS }
   function select(layer) {
     selected = layer;
     fillProps();
-    draw();
+    markSelected();
+    renderLayerList();
+  }
+
+  function markSelected() {
+    var nodes = $stage.querySelectorAll('.lyr');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].classList.toggle('sel', scene.l[parseInt(nodes[i].dataset.idx, 10)] === selected);
+    }
   }
 
   function fillProps() {
@@ -838,25 +1005,45 @@ ${ WARDROBE_CSS }
     $stage.style.height = scene.h + 'px';
     $stage.style.background = scene.bg.c || 'transparent';
     if (scene.bg.i) {
-      $stage.style.backgroundImage = 'url("' + scene.bg.i.replace(/"/g, '%22') + '")';
+      var zoom = (scene.bg.s || 100) / 100;
+      $stage.style.backgroundImage = 'url("' + proxied(scene.bg.i).replace(/"/g, '%22') + '")';
       $stage.style.backgroundRepeat = scene.bg.m === 'tile' ? 'repeat' : 'no-repeat';
-      $stage.style.backgroundPosition = 'center';
-      $stage.style.backgroundSize = scene.bg.m === 'stretch' ? '100% 100%'
-        : (scene.bg.m === 'tile' ? 'auto' : scene.bg.m);
+      $stage.style.imageRendering = scene.smooth !== 0 ? 'auto' : 'pixelated';
+      $stage.style.backgroundPosition = scene.bg.m === 'tile'
+        ? scene.bg.x + 'px ' + scene.bg.y + 'px'
+        : 'calc(50% + ' + scene.bg.x + 'px) calc(50% + ' + scene.bg.y + 'px)';
+
+      if (scene.bg.m === 'stretch') {
+        $stage.style.backgroundSize = (100 * zoom) + '% ' + (100 * zoom) + '%';
+      } else if (scene.bg.m === 'tile') {
+        measureBg(function (w, h) {
+          $stage.style.backgroundSize = w ? Math.max(1, w * zoom) + 'px ' + Math.max(1, h * zoom) + 'px' : 'auto';
+        });
+      } else if (zoom === 1) {
+        $stage.style.backgroundSize = scene.bg.m;
+      } else {
+        measureBg(function (w, h) {
+          if (!w) { $stage.style.backgroundSize = scene.bg.m; return; }
+          var ratio = (scene.bg.m === 'contain'
+            ? Math.min(scene.w / w, scene.h / h)
+            : Math.max(scene.w / w, scene.h / h)) * zoom;
+          $stage.style.backgroundSize = (w * ratio) + 'px ' + (h * ratio) + 'px';
+        });
+      }
     } else {
       $stage.style.backgroundImage = 'none';
     }
 
     $stage.textContent = '';
 
-    scene.l.forEach(function (layer) {
+    scene.l.forEach(function (layer, index) {
       var node = document.createElement('div');
       node.className = 'lyr' + (selected === layer ? ' sel' : '');
+      node.dataset.idx = index;
       node.style.left = layer.x + 'px';
       node.style.top = layer.y + 'px';
       node.style.opacity = layer.o / 100;
-      node.style.transform = 'scale(' + (layer.s / 100) + ')' + (layer.f ? ' scaleX(-1)' : '');
-      if (layer.f) { node.style.transformOrigin = 'top left'; }
+      node.style.transform = 'scale(' + (layer.s / 100) + ')';
 
       if (layer.t === 't') {
         var span = document.createElement('div');
@@ -870,7 +1057,7 @@ ${ WARDROBE_CSS }
         var img = document.createElement('img');
         img.alt = '';
         img.crossOrigin = 'anonymous';
-        if (layer.t === 'a') { img.src = avatarUrl(layer); } else if (layer.u) { img.src = layer.u; }
+        if (layer.t === 'a') { img.src = avatarUrl(layer); } else if (layer.u) { img.src = proxied(layer.u); }
         img.addEventListener('load', updateUrl);
         node.appendChild(img);
       }
@@ -881,9 +1068,11 @@ ${ WARDROBE_CSS }
 
     renderLayerList();
     updateUrl();
+    checkHosts();
   }
 
   function startDrag(e, layer, node) {
+    if (e.button !== undefined && e.button !== 0) { return; }
     e.preventDefault();
     select(layer);
     var startX = e.clientX;
@@ -902,28 +1091,58 @@ ${ WARDROBE_CSS }
       $('pY').value = layer.y;
     }
 
-    function onUp() {
+    function onUp(ev) {
       node.classList.remove('dragging');
+      try { node.releasePointerCapture(ev.pointerId); } catch (err) {}
       node.removeEventListener('pointermove', onMove);
       node.removeEventListener('pointerup', onUp);
+      node.removeEventListener('pointercancel', onUp);
       updateUrl();
     }
 
     node.addEventListener('pointermove', onMove);
     node.addEventListener('pointerup', onUp);
+    node.addEventListener('pointercancel', onUp);
   }
 
   function payload() {
     return {
       w: scene.w,
       h: scene.h,
-      bg: { c: scene.bg.c, i: scene.bg.i, m: scene.bg.m },
-      l: scene.l.map(function (layer) {
+      a: scene.a,
+      smooth: scene.smooth,
+      bg: {
+        c: scene.bg.c,
+        i: isData(scene.bg.i) ? null : scene.bg.i,
+        m: scene.bg.m,
+        x: scene.bg.x,
+        y: scene.bg.y,
+        s: scene.bg.s
+      },
+      l: scene.l.filter(function (layer) {
+        return !(layer.t === 'i' && isData(layer.u));
+      }).map(function (layer) {
         var copy = {};
         Object.keys(layer).forEach(function (k) { if (k !== 'id') { copy[k] = layer[k]; } });
         return copy;
       })
     };
+  }
+
+  function hasLocalImage() {
+    if (isData(scene.bg.i)) { return true; }
+    return scene.l.some(function (layer) { return layer.t === 'i' && isData(layer.u); });
+  }
+
+  function readFile(input, apply) {
+    var file = input.files && input.files[0];
+    if (!file) { return; }
+    if (file.size > 4 * 1024 * 1024) { setMsg('err', t('fileTooBig')); return; }
+    var reader = new FileReader();
+    reader.onload = function () { apply(String(reader.result)); };
+    reader.onerror = function () { setMsg('err', t('fileFailed')); };
+    reader.readAsDataURL(file);
+    input.value = '';
   }
 
   function encodePayload() {
@@ -937,7 +1156,10 @@ ${ WARDROBE_CSS }
   function sceneLink() {
     var q = 's=' + encodePayload();
     if (API_KEY) { q += '&key=' + encodeURIComponent(API_KEY); }
-    return location.origin + SCENE_URL + '?' + q;
+    var lower = String(SCENE_URL || '').toLowerCase();
+    var isAbs = lower.indexOf('http://') === 0 || lower.indexOf('https://') === 0;
+    var base = isAbs ? SCENE_URL : (PUBLIC || location.origin) + SCENE_URL;
+    return base + '?' + q;
   }
 
   function updateUrl() {
@@ -967,7 +1189,6 @@ ${ WARDROBE_CSS }
     canvas.width = scene.w;
     canvas.height = scene.h;
     var ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
 
     if (scene.bg.c) {
       ctx.fillStyle = scene.bg.c;
@@ -976,20 +1197,33 @@ ${ WARDROBE_CSS }
 
     if (scene.bg.i) {
       try {
-        var bg = await loadImage(scene.bg.i);
-        if (scene.bg.m === 'stretch') {
-          ctx.drawImage(bg, 0, 0, scene.w, scene.h);
-        } else if (scene.bg.m === 'tile') {
-          for (var y = 0; y < scene.h; y += bg.height) {
-            for (var x = 0; x < scene.w; x += bg.width) { ctx.drawImage(bg, x, y); }
+        var bg = await loadImage(proxied(scene.bg.i));
+        var z = (scene.bg.s || 100) / 100;
+        var ox = scene.bg.x || 0;
+        var oy = scene.bg.y || 0;
+        ctx.save();
+        setSmoothing(ctx, scene.smooth !== 0);
+        if (scene.bg.m === 'tile') {
+          var tw = Math.max(1, bg.width * z);
+          var th = Math.max(1, bg.height * z);
+          var sx = ((ox % tw) + tw) % tw - tw;
+          var sy = ((oy % th) + th) % th - th;
+          for (var y = sy; y < scene.h; y += th) {
+            for (var x = sx; x < scene.w; x += tw) { ctx.drawImage(bg, x, y, tw, th); }
           }
         } else {
-          var ratio = scene.bg.m === 'contain'
-            ? Math.min(scene.w / bg.width, scene.h / bg.height)
-            : Math.max(scene.w / bg.width, scene.h / bg.height);
-          ctx.drawImage(bg, (scene.w - bg.width * ratio) / 2, (scene.h - bg.height * ratio) / 2,
-            bg.width * ratio, bg.height * ratio);
+          ctx.translate(ox, oy);
+          if (scene.bg.m === 'stretch') {
+            ctx.drawImage(bg, 0, 0, scene.w * z, scene.h * z);
+          } else {
+            var ratio = (scene.bg.m === 'contain'
+              ? Math.min(scene.w / bg.width, scene.h / bg.height)
+              : Math.max(scene.w / bg.width, scene.h / bg.height)) * z;
+            ctx.drawImage(bg, (scene.w - bg.width * ratio) / 2, (scene.h - bg.height * ratio) / 2,
+              bg.width * ratio, bg.height * ratio);
+          }
         }
+        ctx.restore();
       } catch (e) {}
     }
 
@@ -1013,14 +1247,11 @@ ${ WARDROBE_CSS }
       }
 
       try {
-        var src = layer.t === 'a' ? avatarUrl(layer) : layer.u;
+        var src = layer.t === 'a' ? avatarUrl(layer) : proxied(layer.u);
         if (!src) { ctx.restore(); continue; }
         var image = await loadImage(src);
-        var w = image.width * scale;
-        var h = image.height * scale;
-        if (layer.f) { ctx.translate(w, 0); ctx.scale(-1, 1); }
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(image, 0, 0, w, h);
+        setSmoothing(ctx, layer.t === 'i' && scene.smooth !== 0);
+        ctx.drawImage(image, 0, 0, image.width * scale, image.height * scale);
       } catch (e) {}
 
       ctx.restore();
@@ -1052,8 +1283,33 @@ ${ WARDROBE_CSS }
 
   function updateHostHint() {
     var hint = $('hostHint');
-    if (!hint) { return; }
-    hint.textContent = HOSTS.length ? t('hostsHint', { hosts: HOSTS.join(', ') }) : t('hostsNone');
+    if (hint) {
+      hint.textContent = HOSTS.length ? t('hostsHint', { hosts: HOSTS.join(', ') }) : t('hostsNone');
+    }
+    checkHosts();
+  }
+
+  function checkHosts() {
+    var bad = [];
+    if (scene.bg.i && !hostOk(scene.bg.i)) { bad.push(scene.bg.i); }
+    scene.l.forEach(function (layer) {
+      if (layer.t === 'i' && layer.u && !hostOk(layer.u)) { bad.push(layer.u); }
+    });
+
+    var warn = $('hostWarn');
+    if (!bad.length) {
+      if (hasLocalImage()) {
+        warn.style.display = '';
+        warn.textContent = t('localOnly');
+      } else {
+        warn.style.display = 'none';
+      }
+      return;
+    }
+    warn.style.display = '';
+    warn.textContent = HOSTS.length
+      ? t('hostBlocked', { hosts: HOSTS.join(', ') })
+      : t('hostBlockedNone');
   }
 
   function addLayer(layer) {
@@ -1062,7 +1318,9 @@ ${ WARDROBE_CSS }
       return;
     }
     scene.l.push(layer);
-    select(layer);
+    selected = layer;
+    fillProps();
+    draw();
   }
 
   $('addAvatar').addEventListener('click', function () { addLayer(newAvatar()); });
@@ -1084,13 +1342,6 @@ ${ WARDROBE_CSS }
     copyLayer.x += 24;
     copyLayer.y += 12;
     addLayer(copyLayer);
-    draw();
-  });
-
-  $('pFlip').addEventListener('click', function () {
-    if (!selected) { return; }
-    selected.f = selected.f ? 0 : 1;
-    draw();
   });
 
   ['pX', 'pY'].forEach(function (id) {
@@ -1225,12 +1476,113 @@ ${ WARDROBE_CSS }
     bgTimer = setTimeout(draw, 400);
   });
 
+  $('bgPick').addEventListener('click', function () { $('bgFile').click(); });
+  $('bgFile').addEventListener('change', function () {
+    readFile(this, function (dataUrl) {
+      scene.bg.i = dataUrl;
+      $('bgUrl').value = '';
+      draw();
+    });
+  });
+
+  $('imgPick').addEventListener('click', function () { $('imgFile').click(); });
+  $('imgFile').addEventListener('change', function () {
+    if (!selected || selected.t !== 'i') { return; }
+    readFile(this, function (dataUrl) {
+      selected.u = dataUrl;
+      $('pUrl').value = '';
+      draw();
+    });
+  });
+
   $('bgFit').addEventListener('change', function () {
     scene.bg.m = this.value;
     draw();
   });
 
-  $('dlPng').addEventListener('click', exportPng);
+  ['bgX', 'bgY'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      scene.bg[id === 'bgX' ? 'x' : 'y'] = parseInt(this.value, 10) || 0;
+      draw();
+    });
+  });
+
+  $('bgZoom').addEventListener('input', function () {
+    scene.bg.s = parseInt(this.value, 10) || 100;
+    $('bgZoomVal').textContent = scene.bg.s + '%';
+    draw();
+  });
+
+  $('bgReset').addEventListener('click', function () {
+    scene.bg.x = 0;
+    scene.bg.y = 0;
+    scene.bg.s = 100;
+    $('bgX').value = 0;
+    $('bgY').value = 0;
+    $('bgZoom').value = 100;
+    $('bgZoomVal').textContent = '100%';
+    draw();
+  });
+
+  $stage.addEventListener('pointerdown', function (e) {
+    if (e.target !== $stage || !scene.bg.i) { return; }
+    e.preventDefault();
+    var startX = e.clientX;
+    var startY = e.clientY;
+    var originX = scene.bg.x;
+    var originY = scene.bg.y;
+    $stage.setPointerCapture(e.pointerId);
+
+    function onMove(ev) {
+      scene.bg.x = Math.round(originX + (ev.clientX - startX));
+      scene.bg.y = Math.round(originY + (ev.clientY - startY));
+      $('bgX').value = scene.bg.x;
+      $('bgY').value = scene.bg.y;
+      draw();
+    }
+
+    function onUp(ev) {
+      try { $stage.releasePointerCapture(ev.pointerId); } catch (err) {}
+      $stage.removeEventListener('pointermove', onMove);
+      $stage.removeEventListener('pointerup', onUp);
+      $stage.removeEventListener('pointercancel', onUp);
+    }
+
+    $stage.addEventListener('pointermove', onMove);
+    $stage.addEventListener('pointerup', onUp);
+    $stage.addEventListener('pointercancel', onUp);
+  });
+
+  $('cvSmooth').addEventListener('change', function () {
+    scene.smooth = this.checked ? 1 : 0;
+    draw();
+  });
+
+  $('cvAnim').addEventListener('change', function () {
+    scene.a = this.checked ? 1 : 0;
+    $('dlPng').textContent = t(scene.a ? 'downloadApng' : 'downloadPng');
+    draw();
+  });
+
+  $('dlPng').addEventListener('click', function () {
+    if (!scene.l.length) { return; }
+
+    if (!scene.a) { exportPng(); return; }
+
+    setMsg('wait', t('rendering'));
+    fetch(sceneLink())
+      .then(function (r) { if (!r.ok) { return r.text().then(function (m) { throw new Error(m); }); } return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.download = 'scene.png';
+        link.href = url;
+        link.click();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        setMsg('ok', t('exported'));
+      })
+      .catch(function (e) { setMsg('err', e.message || t('renderFailed')); });
+  });
   $('copyScene').addEventListener('click', function () {
     if (!scene.l.length) { return; }
     copy(sceneLink(), function () { setMsg('ok', t('linkCopied')); });

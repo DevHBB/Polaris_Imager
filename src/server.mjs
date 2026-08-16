@@ -2,7 +2,7 @@ import express from 'express';
 import { createHash } from 'crypto';
 import { CONFIG, buildRendererConfig } from './config.mjs';
 import { parseAvatarParams, ParamError } from './params.mjs';
-import { encodeFrames } from './apng.mjs';
+import { encodeFrames, flattenFrames } from './apng.mjs';
 import { RendererPool, preflightGl } from './renderer.mjs';
 import { createApiKeyGuard, createCors, createRateLimiter, makeClientIp, securityHeaders } from './security.mjs';
 import { createAccessLogger } from './logger.mjs';
@@ -138,6 +138,7 @@ app.get('/', (req, res) => {
             '  text            speech-bubble text above the avatar',
             '  text_color      bubble text colour, hex        (default 000000)',
             '  bubble_color    bubble background colour, hex  (default ffffff)',
+            '  bg_color        flatten onto this colour, hex  (default transparent)',
             '',
             'Example:',
             '  /avatarimage?figure=hd-180-1.ch-255-66.lg-280-110.sh-305-62&action=wlk,wav&direction=2&size=l',
@@ -209,7 +210,9 @@ app.get('/avatarimage', cors, rateLimiter, apiKeyGuard, async (req, res) => {
 
         if (!rendered || !rendered.frames?.length) throw new Error('renderer produced no frames');
 
-        const frames = rendered.frames.map((frame) => Buffer.from(frame, 'base64'));
+        let frames = rendered.frames.map((frame) => Buffer.from(frame, 'base64'));
+
+        if (descriptor.background !== null) frames = flattenFrames(frames, descriptor.background);
 
         const buffer = encodeFrames({
             frames,
@@ -261,16 +264,16 @@ if (CONFIG.scene.enabled) {
 
         const cached = cache.get(cacheKey);
 
-        if (cached) return sendImage(res, cached.buffer, false, 'HIT');
+        if (cached) return sendImage(res, cached.buffer, cached.animated, 'HIT');
 
         if (!renderer.ready) return res.status(503).type('text/plain').send('Renderer still starting, try again shortly.');
 
         try {
-            const buffer = await renderScene(scene, renderer);
+            const { buffer, animated } = await renderScene(scene, renderer);
 
-            cache.set(cacheKey, { buffer, animated: false });
+            cache.set(cacheKey, { buffer, animated });
 
-            return sendImage(res, buffer, false, 'MISS');
+            return sendImage(res, buffer, animated, 'MISS');
         } catch (error) {
             if (error instanceof SceneError) return res.status(400).type('text/plain').send(error.message);
 
@@ -396,6 +399,14 @@ const start = async () => {
         server.headersTimeout = 30_000;
         server.requestTimeout = 60_000;
         console.log(`[pixinode] listening on http://${ CONFIG.host }:${ CONFIG.port }`);
+
+        if (CONFIG.scene.enabled) {
+            console.log(`[pixinode] scene image hosts: ${ CONFIG.scene.imageHosts.length ? CONFIG.scene.imageHosts.join(', ') : '(none)' }`);
+
+            if (CONFIG.scene.imageHosts.includes('*')) {
+                console.warn('[pixinode] AVATAR_IMAGING_SCENE_IMAGE_HOSTS=* lets the server fetch ANY url. Only do this on a trusted network.');
+            }
+        }
 
         if (CONFIG.generate.enabled) {
             const base = CONFIG.generate.publicUrl || `http://${ CONFIG.host }:${ CONFIG.port }`;

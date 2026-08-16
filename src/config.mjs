@@ -23,6 +23,14 @@ const trustProxy = (value) => {
     return Number.isFinite(n) && String(n) === value.trim() ? n : value;
 };
 
+const hostOf = (value) => {
+    try {
+        return new URL(value).hostname;
+    } catch {
+        return null;
+    }
+};
+
 const list = (value, fallback) => {
     if (!value || !value.trim().length) return fallback;
 
@@ -81,7 +89,12 @@ export const CONFIG = {
         maxPayload: int(env.AVATAR_IMAGING_SCENE_MAX_PAYLOAD, 16000),
         maxImageBytes: int(env.AVATAR_IMAGING_SCENE_MAX_IMAGE_BYTES, 4 * 1024 * 1024),
         imageTimeoutMs: int(env.AVATAR_IMAGING_SCENE_IMAGE_TIMEOUT_MS, 8000),
-        imageHosts: list(env.AVATAR_IMAGING_SCENE_IMAGE_HOSTS, [])
+        imageHosts: [...new Set([
+            ...list(env.AVATAR_IMAGING_SCENE_IMAGE_HOSTS, []),
+            hostOf(env.NITRO_GAMEDATA_URL),
+            hostOf(env.NITRO_ASSET_URL),
+            hostOf(env.AVATAR_IMAGING_PUBLIC_URL)
+        ].filter(Boolean))]
     },
 
     wardrobe: {
