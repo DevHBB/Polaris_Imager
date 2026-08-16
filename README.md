@@ -419,6 +419,28 @@ the **PNG export includes the background** instead of silently dropping it to a
 CORS taint. A blocked host is reported in the editor as soon as the URL is typed,
 rather than at export time.
 
+### Chat bubble styles
+
+`bubble=<id>` swaps the engine's speech bubble for one of the Habbo sprites in
+`bubbles/`, in the panel and on scene avatars alike:
+
+```
+/avatarimage?figure=hd-180-1.ch-255-66&text=Hello!&bubble=23
+```
+
+The sprite is a fixed template, so it is three-sliced: everything left of the
+message area is kept, the message column is repeated to fit the text, and the
+rounded end is drawn last. Where the message area starts is detected once per
+sprite by walking in from the right until the flat fill colour changes, which is
+also where the text is placed. Pointers and end decorations are matched from the
+filenames (`bubble_2_31_pointer.png` serves both 2 and 31).
+
+With a style selected the avatar is rendered *without* a bubble and the sprite is
+composited above it, frame by frame, so an animated avatar keeps its animation.
+The bubble colour picker is replaced by the style picker plus a live preview
+rendered by `GET /Generate/bubble.png?id=…&text=…`. Set
+`AVATAR_IMAGING_CHAT_BUBBLES=0` to hide the feature and keep the engine bubble.
+
 ### Habbo typefaces (scene only)
 
 Text layers can be set to a pixel typeface instead of a plain system font. The

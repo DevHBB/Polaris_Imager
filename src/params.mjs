@@ -147,6 +147,9 @@ export const parseAvatarParams = (query, { defaultFigure = null, maxFigureLength
     const textColor = parseHexColor(first(query.text_color), 0x000000);
     const bubbleColor = parseHexColor(first(query.bubble_color), 0xffffff);
 
+    const bubbleStyle = (first(query.bubble) ?? '').toString().trim();
+    const bubble = /^\d{1,3}$/.test(bubbleStyle) ? bubbleStyle : null;
+
     const bgRaw = (first(query.bg_color) ?? '').toString().trim();
     const background = bgRaw && bgRaw.toLowerCase() !== 'transparent'
         ? parseHexColor(bgRaw, null)
@@ -171,6 +174,7 @@ export const parseAvatarParams = (query, { defaultFigure = null, maxFigureLength
         text,
         textColor,
         bubbleColor,
+        bubble,
         background
     };
 };

@@ -5,6 +5,7 @@ import { parseAvatarParams } from './params.mjs';
 import { CONFIG } from './config.mjs';
 import { getFont, getFontImage } from './habbo-fonts.mjs';
 import { layoutHabboText } from './font-layout.mjs';
+import { composeWithBubble, getBubble } from './chat-bubbles.mjs';
 
 export class SceneError extends Error {}
 
@@ -132,7 +133,8 @@ const normalizeLayer = (layer) => {
         frame_num: num(layer.frame_num, 0, 0, 60),
         text: text(layer.text, CONFIG.maxTextLength),
         text_color: hex(layer.text_color, '#000000').slice(1),
-        bubble_color: hex(layer.bubble_color, '#ffffff').slice(1)
+        bubble_color: hex(layer.bubble_color, '#ffffff').slice(1),
+        bubble: /^\d{1,3}$/.test(String(layer.bubble || '')) ? String(layer.bubble) : ''
     };
 };
 
@@ -182,7 +184,8 @@ const renderAvatarLayer = async (renderer, layer, animate) => {
             img_format: animate ? 'auto' : 'png',
             text: layer.text || undefined,
             text_color: layer.text_color,
-            bubble_color: layer.bubble_color
+            bubble_color: layer.bubble_color,
+            bubble: layer.bubble || undefined
         },
         {
             defaultFigure: null,
@@ -192,9 +195,40 @@ const renderAvatarLayer = async (renderer, layer, animate) => {
         }
     );
 
-    const rendered = await renderer.render(descriptor);
+    let bubble = null;
+
+    if (descriptor.bubble && descriptor.text && CONFIG.bubbles.enabled) {
+        try {
+            bubble = await getBubble(descriptor.bubble);
+        } catch {
+            bubble = null;
+        }
+    }
+
+    const rendered = await renderer.render(bubble ? { ...descriptor, text: null } : descriptor);
 
     if (!rendered?.frames?.length) throw new SceneError('The renderer produced no frames for a layer.');
+
+    if (bubble) {
+        const raw = (animate ? rendered.frames : [rendered.frames[0]]).map((frame) => Buffer.from(frame, 'base64'));
+        const composed = composeWithBubble(
+            { frames: raw, width: rendered.width, height: rendered.height },
+            bubble,
+            descriptor.text,
+            `#${ descriptor.textColor.toString(16).padStart(6, '0') }`
+        );
+
+        return {
+            frames: composed.frames.map((frame) => encodeFrames({
+                frames: [frame],
+                width: composed.width,
+                height: composed.height,
+                delays: [0],
+                postScale: descriptor.postScale
+            })),
+            delays: rendered.delays || []
+        };
+    }
 
     const frames = (animate ? rendered.frames : [rendered.frames[0]]).map((frame) => encodeFrames({
         frames: [Buffer.from(frame, 'base64')],

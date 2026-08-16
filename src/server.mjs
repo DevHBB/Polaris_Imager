@@ -11,6 +11,7 @@ import { createGenerateRouter } from './generate-route.mjs';
 
 import { checkDatabase, closeDatabase } from './db.mjs';
 import { decodeScene, renderScene, SceneError } from './scene.mjs';
+import { composeWithBubble, getBubble } from './chat-bubbles.mjs';
 
 class ResponseCache {
     #map = new Map();
@@ -139,6 +140,7 @@ app.get('/', (req, res) => {
             '  text_color      bubble text colour, hex        (default 000000)',
             '  bubble_color    bubble background colour, hex  (default ffffff)',
             '  bg_color        flatten onto this colour, hex  (default transparent)',
+            '  bubble          chat bubble style id, with text (default: engine bubble)',
             '',
             'Example:',
             '  /avatarimage?figure=hd-180-1.ch-255-66.lg-280-110.sh-305-62&action=wlk,wav&direction=2&size=l',
@@ -203,21 +205,48 @@ app.get('/avatarimage', cors, rateLimiter, apiKeyGuard, async (req, res) => {
 
     if (!renderer.ready) return res.status(503).type('text/plain').send('Renderer still starting, try again shortly.');
 
+    // A sprite bubble is composited here instead of being drawn by the renderer,
+    // so the avatar itself is rendered without any speech bubble.
+    let bubble = null;
+
+    if (descriptor.bubble && descriptor.text && CONFIG.bubbles.enabled) {
+        try {
+            bubble = await getBubble(descriptor.bubble);
+        } catch (error) {
+            console.warn('[pixinode] bubble catalog failed:', error?.message || error);
+        }
+    }
+
     try {
-        const rendered = await renderer.render(descriptor);
+        const rendered = await renderer.render(bubble ? { ...descriptor, text: null } : descriptor);
 
         if (rendered?._diag) console.log('[pixinode] effect diag:', JSON.stringify(rendered._diag));
 
         if (!rendered || !rendered.frames?.length) throw new Error('renderer produced no frames');
 
         let frames = rendered.frames.map((frame) => Buffer.from(frame, 'base64'));
+        let width = rendered.width;
+        let height = rendered.height;
+
+        if (bubble) {
+            const composed = composeWithBubble(
+                { frames, width, height },
+                bubble,
+                descriptor.text,
+                `#${ descriptor.textColor.toString(16).padStart(6, '0') }`
+            );
+
+            frames = composed.frames;
+            width = composed.width;
+            height = composed.height;
+        }
 
         if (descriptor.background !== null) frames = flattenFrames(frames, descriptor.background);
 
         const buffer = encodeFrames({
             frames,
-            width: rendered.width,
-            height: rendered.height,
+            width,
+            height,
             delays: rendered.delays,
             postScale: descriptor.postScale
         });

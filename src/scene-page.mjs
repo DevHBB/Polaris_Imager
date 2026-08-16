@@ -18,6 +18,7 @@ export const renderScenePage = ({
     searchEnabled = false,
     wardrobeEnabled = true,
     fontsEnabled = true,
+    bubblesEnabled = true,
     logoutEnabled = false,
     publicUrl = '',
     imageHosts = [],
@@ -368,12 +369,17 @@ ${ WARDROBE_CSS }
             <label for="pText" data-i18n="message">Message</label>
             <input type="text" id="pText" maxlength="100" placeholder="" data-i18n-ph="msgPh">
           </div>
+          <div class="field" id="pBubbleField" style="display:none">
+            <label for="pBubble" data-i18n="bubbleStyle">Bubble style</label>
+            <select id="pBubble"><option value="" data-i18n="bubblePlain">Colour</option></select>
+            <div id="pBubblePreview" style="margin-top:8px;min-height:24px"></div>
+          </div>
           <div class="row" style="margin-bottom:0">
             <div class="field" style="margin-bottom:0">
               <label for="pTextColor" data-i18n="textColor">Text colour</label>
               <input type="color" id="pTextColor" value="#000000">
             </div>
-            <div class="field" style="margin-bottom:0">
+            <div class="field" id="pBubbleColorField" style="margin-bottom:0">
               <label for="pBubbleColor" data-i18n="bubbleColor">Bubble colour</label>
               <input type="color" id="pBubbleColor" value="#ffffff">
             </div>
@@ -433,6 +439,7 @@ ${ WARDROBE_CSS }
   var SEARCH = ${ js(searchEnabled) };
   var WARDROBE = ${ js(wardrobeEnabled) };
   var FONTS_ON = ${ js(fontsEnabled) };
+  var BUBBLES = ${ js(bubblesEnabled) };
   var API_KEY = ${ js(apiKey) };
   var TOKEN = ${ js(token) };
   var HOSTS = ${ js(imageHosts) };
@@ -490,6 +497,8 @@ ${ WARDROBE_CSS }
       typeface: 'Typeface',
       plainText: 'Plain text',
       letterSpacing: 'Letter spacing',
+      bubbleStyle: 'Bubble style',
+      bubblePlain: 'Colour',
       emptyScene: 'No layer yet.', exported: 'Image downloaded.',
       wardrobe: 'Wardrobe', close: 'Close', showHc: 'Show HC', removeItem: 'Remove',
       genderAll: 'All', genderMale: 'Male', genderFemale: 'Female',
@@ -545,6 +554,8 @@ ${ WARDROBE_CSS }
       typeface: 'Lettertype',
       plainText: 'Gewone tekst',
       letterSpacing: 'Letterafstand',
+      bubbleStyle: 'Ballonstijl',
+      bubblePlain: 'Kleur',
       emptyScene: 'Nog geen laag.', exported: 'Afbeelding gedownload.',
       wardrobe: 'Kledingkast', close: 'Sluiten', showHc: 'HC tonen', removeItem: 'Verwijderen',
       genderAll: 'Alle', genderMale: 'Man', genderFemale: 'Vrouw',
@@ -600,6 +611,8 @@ ${ WARDROBE_CSS }
       typeface: 'Tipografía',
       plainText: 'Texto simple',
       letterSpacing: 'Espaciado',
+      bubbleStyle: 'Estilo del bocadillo',
+      bubblePlain: 'Color',
       emptyScene: 'Aún no hay capas.', exported: 'Imagen descargada.',
       wardrobe: 'Armario', close: 'Cerrar', showHc: 'Mostrar HC', removeItem: 'Quitar',
       genderAll: 'Todos', genderMale: 'Hombre', genderFemale: 'Mujer',
@@ -656,6 +669,8 @@ ${ WARDROBE_CSS }
       typeface: 'Police',
       plainText: 'Texte simple',
       letterSpacing: 'Espacement',
+      bubbleStyle: 'Style de bulle',
+      bubblePlain: 'Couleur',
       emptyScene: 'Aucun calque pour le moment.', exported: 'Image téléchargée.',
       wardrobe: 'Vestiaire', close: 'Fermer', showHc: 'Afficher les HC', removeItem: 'Retirer',
       genderAll: 'Tous', genderMale: 'Homme', genderFemale: 'Femme',
@@ -711,6 +726,8 @@ ${ WARDROBE_CSS }
       typeface: 'Schriftart',
       plainText: 'Einfacher Text',
       letterSpacing: 'Zeichenabstand',
+      bubbleStyle: 'Blasenstil',
+      bubblePlain: 'Farbe',
       emptyScene: 'Noch keine Ebene.', exported: 'Bild heruntergeladen.',
       wardrobe: 'Kleiderschrank', close: 'Schließen', showHc: 'HC anzeigen', removeItem: 'Entfernen',
       genderAll: 'Alle', genderMale: 'Männlich', genderFemale: 'Weiblich',
@@ -806,7 +823,8 @@ ${ WARDROBE_CSS }
     if (layer.text) {
       p.text = layer.text;
       p.text_color = layer.text_color;
-      p.bubble_color = layer.bubble_color;
+      if (BUBBLES && layer.bubble) { p.bubble = layer.bubble; }
+      else { p.bubble_color = layer.bubble_color; }
     }
     if (override) { Object.keys(override).forEach(function (k) { p[k] = override[k]; }); }
     var q = qs(p);
@@ -920,7 +938,7 @@ ${ LAYOUT_JS }
       id: ++seq, t: 'a', x: 40 + (scene.l.length % 5) * 30, y: 40, s: 100, o: 100,
       figure: START_FIGURE, action: '', gesture: 'std', direction: 2, head_direction: 2,
       headonly: 0, effect: 0, dance: 0, size: 'n', frame_num: 0,
-      text: '', text_color: '000000', bubble_color: 'ffffff'
+      text: '', text_color: '000000', bubble_color: 'ffffff', bubble: ''
     };
   }
 
@@ -1039,6 +1057,7 @@ ${ LAYOUT_JS }
       $('pText').value = selected.text;
       $('pTextColor').value = '#' + selected.text_color;
       $('pBubbleColor').value = '#' + selected.bubble_color;
+      if (BUBBLES) { $('pBubble').value = selected.bubble || ''; paintBubbleUi(); }
       paintDirs();
       var chips = document.querySelectorAll('#pActs .chip');
       for (var i = 0; i < chips.length; i++) {
@@ -1505,13 +1524,14 @@ ${ LAYOUT_JS }
     if (!selected || selected.t !== 'a') { return; }
     selected.text = this.value;
     clearTimeout(figTimer);
-    figTimer = setTimeout(draw, 400);
+    figTimer = setTimeout(function () { paintBubbleUi(); draw(); }, 400);
   });
 
   ['pTextColor', 'pBubbleColor'].forEach(function (id) {
     $(id).addEventListener('change', function () {
       if (!selected || selected.t !== 'a') { return; }
       selected[id === 'pTextColor' ? 'text_color' : 'bubble_color'] = this.value.replace('#', '');
+      paintBubbleUi();
       draw();
     });
   });
@@ -1548,6 +1568,55 @@ ${ LAYOUT_JS }
     selected.fs = parseInt(this.value, 10) || 20;
     draw();
   });
+
+  function bubblePreviewUrl(layer) {
+    return BASE + '/bubble.png?id=' + encodeURIComponent(layer.bubble) +
+      '&text=' + encodeURIComponent((layer.text || 'Aa').slice(0, 60)) +
+      '&text_color=' + encodeURIComponent(layer.text_color || '000000') +
+      (TOKEN ? '&token=' + encodeURIComponent(TOKEN) : '');
+  }
+
+  function paintBubbleUi() {
+    if (!BUBBLES || !selected || selected.t !== 'a') { return; }
+    var chosen = !!selected.bubble;
+    $('pBubbleColorField').style.display = chosen ? 'none' : '';
+    var host = $('pBubblePreview');
+    host.textContent = '';
+    if (!chosen) { return; }
+    var img = document.createElement('img');
+    img.alt = '';
+    img.style.imageRendering = 'pixelated';
+    img.style.maxWidth = '100%';
+    img.src = bubblePreviewUrl(selected);
+    host.appendChild(img);
+  }
+
+  function loadBubbles() {
+    if (!BUBBLES) { return; }
+    $('pBubbleField').style.display = '';
+    fetch(BASE + '/bubbles' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : ''), { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) { return; }
+        var sel = $('pBubble');
+        d.bubbles.forEach(function (b) {
+          var o = document.createElement('option');
+          o.value = b.id;
+          o.textContent = '#' + b.id;
+          sel.appendChild(o);
+        });
+      })
+      .catch(function () {});
+  }
+
+  if (BUBBLES) {
+    $('pBubble').addEventListener('change', function () {
+      if (!selected || selected.t !== 'a') { return; }
+      selected.bubble = this.value;
+      paintBubbleUi();
+      draw();
+    });
+  }
 
   $('pFont').addEventListener('change', function () {
     if (!selected || selected.t !== 't') { return; }
@@ -1822,6 +1891,7 @@ ${ WARDROBE_JS }
 
   buildDirs();
   loadFonts();
+  loadBubbles();
   addLayer(newAvatar());
   applyLang();
   draw();

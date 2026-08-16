@@ -4,6 +4,7 @@ import { renderScenePage } from './scene-page.mjs';
 import { getFigureData } from './figuredata.mjs';
 import { fetchImageBuffer, hostAllowed, SceneError } from './scene.mjs';
 import { getFontManifest, getFontSheet } from './habbo-fonts.mjs';
+import { getBubble, getBubbleManifest, renderBubblePng } from './chat-bubbles.mjs';
 import { createAuth, renderLoginPage, safeEqual } from './generate-auth.mjs';
 import { makeClientIp } from './security.mjs';
 import { findUserByName, searchUsers } from './db.mjs';
@@ -14,7 +15,7 @@ const USERNAME_RE = /^[A-Za-z0-9 ._:@-]{1,64}$/;
 
 const PRESET_KEYS = [
     'figure', 'action', 'gesture', 'direction', 'head_direction', 'headonly',
-    'dance', 'effect', 'size', 'frame_num', 'img_format', 'text', 'text_color', 'bubble_color', 'bg_color'
+    'dance', 'effect', 'size', 'frame_num', 'img_format', 'text', 'text_color', 'bubble_color', 'bg_color', 'bubble'
 ];
 
 const first = (value) => (Array.isArray(value) ? value[0] : value);
@@ -72,6 +73,7 @@ export const createGenerateRouter = (CONFIG) => {
     const searchAvailable = db.enabled;
     const sceneAvailable = CONFIG.scene.enabled;
     const fontsAvailable = CONFIG.scene.enabled && CONFIG.fonts.enabled;
+    const bubblesAvailable = CONFIG.bubbles.enabled;
     const wardrobeAvailable = CONFIG.wardrobe.enabled;
 
     const isSecure = (req) => req.secure || req.get('x-forwarded-proto') === 'https';
@@ -180,6 +182,7 @@ export const createGenerateRouter = (CONFIG) => {
             publicUrl: gen.publicUrl,
             sceneEnabled: sceneAvailable,
             wardrobeEnabled: wardrobeAvailable,
+            bubblesEnabled: bubblesAvailable,
             apiKey: gen.uiApiKey,
             token: gen.token,
             title: gen.title,
@@ -317,6 +320,7 @@ export const createGenerateRouter = (CONFIG) => {
                 publicUrl: gen.publicUrl,
                 imageHosts: CONFIG.scene.imageHosts,
                 fontsEnabled: fontsAvailable,
+                bubblesEnabled: bubblesAvailable,
                 apiKey: gen.uiApiKey,
                 token: gen.token,
                 title: gen.title,
@@ -356,6 +360,43 @@ export const createGenerateRouter = (CONFIG) => {
                 const message = error instanceof SceneError ? error.message : 'Could not load that image.';
 
                 return res.status(502).type('text/plain').send(message);
+            }
+        });
+    }
+
+    if (bubblesAvailable) {
+        router.get('/bubbles', async (req, res) => {
+            try {
+                const bubbles = await getBubbleManifest();
+
+                res.set('Cache-Control', 'private, max-age=3600');
+
+                return res.json({ ok: true, bubbles });
+            } catch (error) {
+                console.error('[pixinode] bubble catalog failed:', error?.message || error);
+
+                return res.status(502).json({ ok: false, error: 'Bubbles unavailable.' });
+            }
+        });
+
+        router.get('/bubble.png', async (req, res) => {
+            try {
+                const bubble = await getBubble(first(req.query.id) ?? '');
+
+                if (!bubble) return res.status(404).type('text/plain').send('Unknown bubble.');
+
+                const text = String(first(req.query.text) ?? '').slice(0, 120) || 'Aa';
+                const colour = String(first(req.query.text_color) ?? '000000').replace('#', '');
+                const png = renderBubblePng(bubble, text, `#${ /^[0-9a-fA-F]{6}$/.test(colour) ? colour : '000000' }`);
+
+                res.set('Cache-Control', 'private, max-age=600');
+                res.type('image/png');
+
+                return res.send(png);
+            } catch (error) {
+                console.error('[pixinode] bubble preview failed:', error?.message || error);
+
+                return res.status(502).type('text/plain').send('Bubble unavailable.');
             }
         });
     }

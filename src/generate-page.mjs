@@ -17,6 +17,7 @@ export const renderGeneratePage = ({
     publicUrl = '',
     sceneEnabled = false,
     wardrobeEnabled = false,
+    bubblesEnabled = false,
     apiKey = '',
     token = '',
     title = 'Avatar Studio',
@@ -327,12 +328,17 @@ ${ WARDROBE_CSS }
         <label for="fText" data-i18n="message">Message</label>
         <input type="text" id="fText" maxlength="100" placeholder="Leave empty for no bubble" data-i18n-ph="msgPh">
       </div>
+      <div class="field" id="bubbleStyleField" style="display:none">
+        <label for="fBubble" data-i18n="bubbleStyle">Bubble style</label>
+        <select id="fBubble"><option value="" data-i18n="bubblePlain">Colour</option></select>
+        <div id="bubblePreview" style="margin-top:8px;min-height:26px"></div>
+      </div>
       <div class="row" style="margin-bottom:0">
         <div class="field" style="margin-bottom:0">
           <label for="fTextColor" data-i18n="textColor">Text colour</label>
           <input type="color" id="fTextColor" value="#000000">
         </div>
-        <div class="field" style="margin-bottom:0">
+        <div class="field" id="bubbleColorField" style="margin-bottom:0">
           <label for="fBubbleColor" data-i18n="bubbleColor">Bubble colour</label>
           <input type="color" id="fBubbleColor" value="#ffffff">
         </div>
@@ -392,6 +398,7 @@ ${ WARDROBE_CSS }
   var API_KEY  = ${js(apiKey)};
   var TOKEN    = ${js(token)};
   var WARDROBE = ${js(wardrobeEnabled)};
+  var BUBBLES  = ${js(bubblesEnabled)};
   var PUBLIC   = ${js(publicUrl)};
   var PRESET   = ${js(query)};
 
@@ -430,6 +437,7 @@ ${ WARDROBE_CSS }
       copyDenied: 'Copy blocked by the browser (HTTPS required).',
       direction: 'Direction', previewAlt: 'Avatar preview',
       createScene: 'Create a scene',
+      bubbleStyle: 'Bubble style', bubblePlain: 'Colour',
       imageBg: 'Image background', bgTransparent: 'Transparent', bgSolid: 'Solid colour', colour: 'Colour', openWardrobe: 'Change clothes', wardrobe: 'Wardrobe', close: 'Close', showHc: 'Show HC', removeItem: 'Remove', genderAll: 'All', genderMale: 'Male', genderFemale: 'Female', noItems: 'Nothing here with these filters.', loading: 'Loading…', wardrobeDown: 'Wardrobe unavailable.', cat_hd: 'Face', cat_hr: 'Hair', cat_ha: 'Hat', cat_he: 'Head accessory', cat_ea: 'Glasses', cat_fa: 'Face accessory', cat_ch: 'Shirt', cat_cc: 'Coat', cat_cp: 'Print', cat_ca: 'Chest accessory', cat_wa: 'Belt', cat_lg: 'Trousers', cat_sh: 'Shoes'
     },
     nl: {
@@ -462,6 +470,7 @@ ${ WARDROBE_CSS }
       copyDenied: 'Kopiëren geblokkeerd door de browser (HTTPS vereist).',
       direction: 'Richting', previewAlt: 'Avatarvoorbeeld',
       createScene: 'Scène maken',
+      bubbleStyle: 'Ballonstijl', bubblePlain: 'Kleur',
       imageBg: 'Achtergrond afbeelding', bgTransparent: 'Transparant', bgSolid: 'Effen kleur', colour: 'Kleur', openWardrobe: 'Kleding wijzigen', wardrobe: 'Kledingkast', close: 'Sluiten', showHc: 'HC tonen', removeItem: 'Verwijderen', genderAll: 'Alle', genderMale: 'Man', genderFemale: 'Vrouw', noItems: 'Niets met deze filters.', loading: 'Laden…', wardrobeDown: 'Kledingkast niet beschikbaar.', cat_hd: 'Gezicht', cat_hr: 'Haar', cat_ha: 'Hoed', cat_he: 'Hoofdaccessoire', cat_ea: 'Bril', cat_fa: 'Gezichtsaccessoire', cat_ch: 'Shirt', cat_cc: 'Jas', cat_cp: 'Print', cat_ca: 'Borstaccessoire', cat_wa: 'Riem', cat_lg: 'Broek', cat_sh: 'Schoenen'
     },
     es: {
@@ -494,6 +503,7 @@ ${ WARDROBE_CSS }
       copyDenied: 'Copia bloqueada por el navegador (se requiere HTTPS).',
       direction: 'Dirección', previewAlt: 'Vista previa del avatar',
       createScene: 'Crear una escena',
+      bubbleStyle: 'Estilo del bocadillo', bubblePlain: 'Color',
       imageBg: 'Fondo de la imagen', bgTransparent: 'Transparente', bgSolid: 'Color sólido', colour: 'Color', openWardrobe: 'Cambiar de ropa', wardrobe: 'Armario', close: 'Cerrar', showHc: 'Mostrar HC', removeItem: 'Quitar', genderAll: 'Todos', genderMale: 'Hombre', genderFemale: 'Mujer', noItems: 'Nada con estos filtros.', loading: 'Cargando…', wardrobeDown: 'Armario no disponible.', cat_hd: 'Cara', cat_hr: 'Pelo', cat_ha: 'Sombrero', cat_he: 'Accesorio de cabeza', cat_ea: 'Gafas', cat_fa: 'Accesorio facial', cat_ch: 'Camiseta', cat_cc: 'Abrigo', cat_cp: 'Estampado', cat_ca: 'Accesorio de pecho', cat_wa: 'Cinturón', cat_lg: 'Pantalón', cat_sh: 'Zapatos'
     },
     fr: {
@@ -526,6 +536,7 @@ ${ WARDROBE_CSS }
       copyDenied: 'Copie refusée par le navigateur (HTTPS requis).',
       direction: 'Direction', previewAlt: "Aperçu de l'avatar",
       createScene: 'Créer une scène',
+      bubbleStyle: 'Style de bulle', bubblePlain: 'Couleur',
       imageBg: "Fond de l'image", bgTransparent: 'Transparent', bgSolid: 'Couleur unie', colour: 'Couleur', openWardrobe: 'Changer de vêtements', wardrobe: 'Vestiaire', close: 'Fermer', showHc: 'Afficher les HC', removeItem: 'Retirer', genderAll: 'Tous', genderMale: 'Homme', genderFemale: 'Femme', noItems: 'Rien avec ces filtres.', loading: 'Chargement…', wardrobeDown: 'Vestiaire indisponible.', cat_hd: 'Visage', cat_hr: 'Cheveux', cat_ha: 'Chapeau', cat_he: 'Accessoire de tête', cat_ea: 'Lunettes', cat_fa: 'Accessoire de visage', cat_ch: 'Haut', cat_cc: 'Manteau', cat_cp: 'Motif', cat_ca: 'Accessoire de torse', cat_wa: 'Ceinture', cat_lg: 'Pantalon', cat_sh: 'Chaussures'
     },
     de: {
@@ -558,6 +569,7 @@ ${ WARDROBE_CSS }
       copyDenied: 'Kopieren vom Browser blockiert (HTTPS erforderlich).',
       direction: 'Richtung', previewAlt: 'Avatar-Vorschau',
       createScene: 'Szene erstellen',
+      bubbleStyle: 'Blasenstil', bubblePlain: 'Farbe',
       imageBg: 'Bildhintergrund', bgTransparent: 'Transparent', bgSolid: 'Einfarbig', colour: 'Farbe', openWardrobe: 'Kleidung ändern', wardrobe: 'Kleiderschrank', close: 'Schließen', showHc: 'HC anzeigen', removeItem: 'Entfernen', genderAll: 'Alle', genderMale: 'Männlich', genderFemale: 'Weiblich', noItems: 'Nichts mit diesen Filtern.', loading: 'Lädt…', wardrobeDown: 'Kleiderschrank nicht verfügbar.', cat_hd: 'Gesicht', cat_hr: 'Haare', cat_ha: 'Hut', cat_he: 'Kopf-Accessoire', cat_ea: 'Brille', cat_fa: 'Gesichts-Accessoire', cat_ch: 'Oberteil', cat_cc: 'Mantel', cat_cp: 'Aufdruck', cat_ca: 'Brust-Accessoire', cat_wa: 'Gürtel', cat_lg: 'Hose', cat_sh: 'Schuhe',
       createScene: 'Créer une scène', openWardrobe: 'Changer de vêtements', wardrobe: 'Vestiaire', close: 'Fermer', showHc: 'Afficher les HC', removeItem: 'Retirer', genderAll: 'Tous', genderMale: 'Homme', genderFemale: 'Femme', noItems: 'Rien avec ces filtres.', loading: 'Chargement…', wardrobeDown: 'Vestiaire indisponible.', cat_hd: 'Visage', cat_hr: 'Cheveux', cat_ha: 'Chapeau', cat_he: 'Accessoire de tête', cat_ea: 'Lunettes', cat_fa: 'Accessoire de visage', cat_ch: 'Haut', cat_cc: 'Manteau', cat_cp: 'Motif', cat_ca: 'Accessoire de torse', cat_wa: 'Ceinture', cat_lg: 'Pantalon', cat_sh: 'Chaussures'
     }
@@ -638,7 +650,8 @@ ${ WARDROBE_CSS }
     if (txt) {
       p.text = txt;
       p.text_color = hex('fTextColor') || '000000';
-      p.bubble_color = hex('fBubbleColor') || 'ffffff';
+      if (BUBBLES && val('fBubble')) { p.bubble = val('fBubble'); }
+      else { p.bubble_color = hex('fBubbleColor') || 'ffffff'; }
     }
     Object.keys(extra || {}).forEach(function (k) { p[k] = extra[k]; });
     return p;
@@ -758,7 +771,7 @@ ${ WARDROBE_CSS }
   }
 
   ['fGesture', 'fSize', 'fHeadonly', 'fEffect', 'fDance', 'fFormat', 'fFrame',
-   'fText', 'fTextColor', 'fBubbleColor', 'fBg', 'fBgColor'].forEach(function (id) {
+   'fText', 'fTextColor', 'fBubbleColor', 'fBg', 'fBgColor', 'fBubble'].forEach(function (id) {
     var e = $(id);
     if (!e) { return; }
     e.addEventListener('change', refresh);
@@ -774,6 +787,7 @@ ${ WARDROBE_CSS }
     $('fFrame').value = '0'; $('fText').value = '';
     $('fTextColor').value = '#000000'; $('fBubbleColor').value = '#ffffff';
     $('fBg').value = '0'; $('fBgColor').value = '#ffffff';
+    if ($('fBubble')) { $('fBubble').value = ''; paintBubbleUi(); }
     for (var k = 0; k < chips.length; k++) { chips[k].classList.toggle('on', chips[k].dataset.act === ''); }
     refresh();
   });
@@ -911,6 +925,7 @@ ${ WARDROBE_CSS }
     if (p.text_color) { $('fTextColor').value = '#' + String(p.text_color).replace('#', ''); }
     if (p.bubble_color) { $('fBubbleColor').value = '#' + String(p.bubble_color).replace('#', ''); }
     if (p.bg_color) { $('fBg').value = '1'; $('fBgColor').value = '#' + String(p.bg_color).replace('#', ''); }
+    if (p.bubble && $('fBubble')) { $('fBubble').value = String(p.bubble); paintBubbleUi(); }
   }
 
 ${ WARDROBE_JS }
@@ -941,7 +956,55 @@ ${ WARDROBE_JS }
     }
   }
 
+  function bubblePreviewUrl() {
+    var id = val('fBubble');
+    if (!id) { return ''; }
+    return BASE + '/bubble.png?id=' + encodeURIComponent(id) +
+      '&text=' + encodeURIComponent((val('fText') || 'Aa').slice(0, 60)) +
+      '&text_color=' + encodeURIComponent(hex('fTextColor') || '000000') +
+      (TOKEN ? '&token=' + encodeURIComponent(TOKEN) : '');
+  }
+
+  function paintBubbleUi() {
+    if (!BUBBLES) { return; }
+    var chosen = !!val('fBubble');
+    $('bubbleColorField').style.display = chosen ? 'none' : '';
+    var host = $('bubblePreview');
+    host.textContent = '';
+    if (!chosen) { return; }
+    var img = document.createElement('img');
+    img.alt = '';
+    img.style.imageRendering = 'pixelated';
+    img.style.maxWidth = '100%';
+    img.src = bubblePreviewUrl();
+    host.appendChild(img);
+  }
+
+  function loadBubbles() {
+    if (!BUBBLES) { return; }
+    $('bubbleStyleField').style.display = '';
+    fetch(BASE + '/bubbles' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : ''), { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) { return; }
+        var sel = $('fBubble');
+        d.bubbles.forEach(function (b) {
+          var o = document.createElement('option');
+          o.value = b.id;
+          o.textContent = '#' + b.id;
+          sel.appendChild(o);
+        });
+      })
+      .catch(function () {});
+  }
+
+  ['fBubble', 'fText', 'fTextColor'].forEach(function (id) {
+    var e = $(id);
+    if (e) { e.addEventListener('change', paintBubbleUi); }
+  });
+
   buildDirGrids();
+  loadBubbles();
   applyLang();
   applyPreset(PRESET);
   refresh();
