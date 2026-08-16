@@ -97,6 +97,10 @@ export const CONFIG = {
         ].filter(Boolean))]
     },
 
+    fonts: {
+        enabled: env.AVATAR_IMAGING_HABBO_FONTS === undefined ? true : bool(env.AVATAR_IMAGING_HABBO_FONTS)
+    },
+
     wardrobe: {
         enabled: env.AVATAR_IMAGING_WARDROBE === undefined ? true : bool(env.AVATAR_IMAGING_WARDROBE)
     },

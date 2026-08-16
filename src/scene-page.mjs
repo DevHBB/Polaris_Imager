@@ -1,4 +1,5 @@
 import { WARDROBE_CSS, WARDROBE_JS } from './wardrobe-widget.mjs';
+import { LAYOUT_JS } from './font-layout.mjs';
 
 const esc = (value) => String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -16,6 +17,7 @@ export const renderScenePage = ({
     lookupEnabled = false,
     searchEnabled = false,
     wardrobeEnabled = true,
+    fontsEnabled = true,
     logoutEnabled = false,
     publicUrl = '',
     imageHosts = [],
@@ -393,14 +395,22 @@ ${ WARDROBE_CSS }
             <label for="pTxt" data-i18n="text">Text</label>
             <textarea id="pTxt"></textarea>
           </div>
+          <div class="field">
+            <label for="pFont" data-i18n="typeface">Typeface</label>
+            <select id="pFont"><option value="" data-i18n="plainText">Plain text</option></select>
+          </div>
           <div class="row" style="margin-bottom:0">
             <div class="field" style="margin-bottom:0">
               <label for="pFs" data-i18n="fontSize">Font size</label>
               <input type="number" id="pFs" value="22" min="8" max="160">
             </div>
-            <div class="field" style="margin-bottom:0">
+            <div class="field" id="colourField" style="margin-bottom:0">
               <label for="pTc" data-i18n="colour">Colour</label>
               <input type="color" id="pTc" value="#16212f">
+            </div>
+            <div class="field" id="spacingField" style="margin-bottom:0;display:none">
+              <label for="pSp" data-i18n="letterSpacing">Letter spacing</label>
+              <input type="number" id="pSp" value="1" min="-20" max="60">
             </div>
           </div>
         </div>
@@ -422,6 +432,7 @@ ${ WARDROBE_CSS }
   var LOOKUP = ${ js(lookupEnabled) };
   var SEARCH = ${ js(searchEnabled) };
   var WARDROBE = ${ js(wardrobeEnabled) };
+  var FONTS_ON = ${ js(fontsEnabled) };
   var API_KEY = ${ js(apiKey) };
   var TOKEN = ${ js(token) };
   var HOSTS = ${ js(imageHosts) };
@@ -476,6 +487,9 @@ ${ WARDROBE_CSS }
       bgDragHint: 'You can also drag the background directly on the canvas.',
       smoothImages: 'Smooth imported images',
       smoothHint: 'Avoids a pixelated background when it is scaled down. Avatars always stay pixel-sharp.',
+      typeface: 'Typeface',
+      plainText: 'Plain text',
+      letterSpacing: 'Letter spacing',
       emptyScene: 'No layer yet.', exported: 'Image downloaded.',
       wardrobe: 'Wardrobe', close: 'Close', showHc: 'Show HC', removeItem: 'Remove',
       genderAll: 'All', genderMale: 'Male', genderFemale: 'Female',
@@ -528,6 +542,9 @@ ${ WARDROBE_CSS }
       bgDragHint: 'Je kunt de achtergrond ook direct op het canvas slepen.',
       smoothImages: 'Geïmporteerde afbeeldingen gladstrijken',
       smoothHint: 'Voorkomt een pixelige achtergrond bij verkleinen. Avatars blijven altijd scherp per pixel.',
+      typeface: 'Lettertype',
+      plainText: 'Gewone tekst',
+      letterSpacing: 'Letterafstand',
       emptyScene: 'Nog geen laag.', exported: 'Afbeelding gedownload.',
       wardrobe: 'Kledingkast', close: 'Sluiten', showHc: 'HC tonen', removeItem: 'Verwijderen',
       genderAll: 'Alle', genderMale: 'Man', genderFemale: 'Vrouw',
@@ -580,6 +597,9 @@ ${ WARDROBE_CSS }
       bgDragHint: 'También puedes arrastrar el fondo directamente en el lienzo.',
       smoothImages: 'Suavizar las imágenes importadas',
       smoothHint: 'Evita un fondo pixelado al reducirlo. Los avatares siempre quedan nítidos píxel a píxel.',
+      typeface: 'Tipografía',
+      plainText: 'Texto simple',
+      letterSpacing: 'Espaciado',
       emptyScene: 'Aún no hay capas.', exported: 'Imagen descargada.',
       wardrobe: 'Armario', close: 'Cerrar', showHc: 'Mostrar HC', removeItem: 'Quitar',
       genderAll: 'Todos', genderMale: 'Hombre', genderFemale: 'Mujer',
@@ -633,6 +653,9 @@ ${ WARDROBE_CSS }
       bgDragHint: "Tu peux aussi déplacer le fond directement à la souris sur la zone de travail.",
       smoothImages: 'Lisser les images importées',
       smoothHint: "Évite un fond pixelisé quand il est réduit. Les avatars restent toujours nets au pixel près.",
+      typeface: 'Police',
+      plainText: 'Texte simple',
+      letterSpacing: 'Espacement',
       emptyScene: 'Aucun calque pour le moment.', exported: 'Image téléchargée.',
       wardrobe: 'Vestiaire', close: 'Fermer', showHc: 'Afficher les HC', removeItem: 'Retirer',
       genderAll: 'Tous', genderMale: 'Homme', genderFemale: 'Femme',
@@ -685,6 +708,9 @@ ${ WARDROBE_CSS }
       bgDragHint: 'Du kannst den Hintergrund auch direkt auf der Fläche ziehen.',
       smoothImages: 'Importierte Bilder glätten',
       smoothHint: 'Verhindert einen pixeligen Hintergrund beim Verkleinern. Avatare bleiben immer pixelscharf.',
+      typeface: 'Schriftart',
+      plainText: 'Einfacher Text',
+      letterSpacing: 'Zeichenabstand',
       emptyScene: 'Noch keine Ebene.', exported: 'Bild heruntergeladen.',
       wardrobe: 'Kleiderschrank', close: 'Schließen', showHc: 'HC anzeigen', removeItem: 'Entfernen',
       genderAll: 'Alle', genderMale: 'Männlich', genderFemale: 'Weiblich',
@@ -788,6 +814,65 @@ ${ WARDROBE_CSS }
     return IMAGER + '?' + q;
   }
 
+${ LAYOUT_JS }
+
+  var FONTS = {};
+  var FONT_IMG = {};
+
+  function fontUrl(id) {
+    return BASE + '/fonts/' + id + '.png' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : '');
+  }
+
+  function fontImage(id) {
+    if (FONT_IMG[id]) { return FONT_IMG[id]; }
+    var img = new Image();
+    img.onload = function () { draw(); };
+    img.src = fontUrl(id);
+    FONT_IMG[id] = img;
+    return img;
+  }
+
+  function loadFonts() {
+    if (!FONTS_ON) { return; }
+    fetch(BASE + '/fonts' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : ''), { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok || !d.fonts) { return; }
+        var sel = $('pFont');
+        d.fonts.forEach(function (font) {
+          FONTS[font.id] = font;
+          var o = document.createElement('option');
+          o.value = font.id;
+          o.textContent = font.name;
+          sel.appendChild(o);
+        });
+      })
+      .catch(function () {});
+  }
+
+  function paintTextLayer(canvas, layer) {
+    var font = FONTS[layer.font];
+    if (!font) { return false; }
+    var img = fontImage(layer.font);
+    if (!img.complete || !img.naturalWidth) { return false; }
+
+    var laid = layoutHabboText(font, layer.v, { size: layer.fs, spacing: layer.sp });
+    canvas.width = laid.width;
+    canvas.height = laid.height;
+    var c = canvas.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    laid.glyphs.forEach(function (g) {
+      c.drawImage(img, g.sx, g.sy, g.sw, g.sh, g.dx, g.dy, g.dw, g.dh);
+    });
+    return true;
+  }
+
+  function toggleTextFields() {
+    var habbo = selected && selected.t === 't' && !!selected.font;
+    $('colourField').style.display = habbo ? 'none' : '';
+    $('spacingField').style.display = habbo ? '' : 'none';
+  }
+
   var bgSize = { url: null, w: 0, h: 0 };
 
   function measureBg(done) {
@@ -844,7 +929,7 @@ ${ WARDROBE_CSS }
   }
 
   function newText() {
-    return { id: ++seq, t: 't', x: 40, y: 40, s: 100, o: 100, v: 'Hello', c: '#16212f', fs: 22, b: 0 };
+    return { id: ++seq, t: 't', x: 40, y: 40, s: 100, o: 100, v: 'Hello', c: '#16212f', fs: 22, b: 0, font: '', sp: 1 };
   }
 
   function layerLabel(layer) {
@@ -965,6 +1050,9 @@ ${ WARDROBE_CSS }
       $('pTxt').value = selected.v;
       $('pFs').value = selected.fs;
       $('pTc').value = selected.c;
+      $('pFont').value = selected.font || '';
+      $('pSp').value = selected.sp;
+      toggleTextFields();
     }
   }
 
@@ -1046,13 +1134,24 @@ ${ WARDROBE_CSS }
       node.style.transform = 'scale(' + (layer.s / 100) + ')';
 
       if (layer.t === 't') {
-        var span = document.createElement('div');
-        span.className = 'txt';
-        span.style.font = (layer.b ? 'bold ' : '') + layer.fs + 'px sans-serif';
-        span.style.color = layer.c;
-        span.style.lineHeight = '1.25';
-        span.textContent = layer.v;
-        node.appendChild(span);
+        if (layer.font) {
+          var glyphCanvas = document.createElement('canvas');
+          glyphCanvas.style.display = 'block';
+          glyphCanvas.style.imageRendering = 'pixelated';
+          if (!paintTextLayer(glyphCanvas, layer)) {
+            glyphCanvas.width = Math.max(40, layer.fs * 4);
+            glyphCanvas.height = layer.fs;
+          }
+          node.appendChild(glyphCanvas);
+        } else {
+          var span = document.createElement('div');
+          span.className = 'txt';
+          span.style.font = (layer.b ? 'bold ' : '') + layer.fs + 'px sans-serif';
+          span.style.color = layer.c;
+          span.style.lineHeight = '1.25';
+          span.textContent = layer.v;
+          node.appendChild(span);
+        }
       } else {
         var img = document.createElement('img');
         img.alt = '';
@@ -1236,6 +1335,17 @@ ${ WARDROBE_CSS }
 
       if (layer.t === 't') {
         ctx.scale(scale, scale);
+
+        if (layer.font && FONTS[layer.font]) {
+          var glyphCanvas = document.createElement('canvas');
+          if (paintTextLayer(glyphCanvas, layer)) {
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(glyphCanvas, 0, 0);
+          }
+          ctx.restore();
+          continue;
+        }
+
         ctx.font = (layer.b ? 'bold ' : '') + layer.fs + 'px sans-serif';
         ctx.fillStyle = layer.c;
         ctx.textBaseline = 'top';
@@ -1436,6 +1546,19 @@ ${ WARDROBE_CSS }
   $('pFs').addEventListener('input', function () {
     if (!selected || selected.t !== 't') { return; }
     selected.fs = parseInt(this.value, 10) || 20;
+    draw();
+  });
+
+  $('pFont').addEventListener('change', function () {
+    if (!selected || selected.t !== 't') { return; }
+    selected.font = this.value;
+    toggleTextFields();
+    draw();
+  });
+
+  $('pSp').addEventListener('input', function () {
+    if (!selected || selected.t !== 't') { return; }
+    selected.sp = parseInt(this.value, 10) || 0;
     draw();
   });
 
@@ -1698,6 +1821,7 @@ ${ WARDROBE_JS }
   }
 
   buildDirs();
+  loadFonts();
   addLayer(newAvatar());
   applyLang();
   draw();

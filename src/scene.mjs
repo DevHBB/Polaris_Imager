@@ -3,6 +3,8 @@ import { createCanvas, loadImage } from 'canvas';
 import { encodeFrames } from './apng.mjs';
 import { parseAvatarParams } from './params.mjs';
 import { CONFIG } from './config.mjs';
+import { getFont, getFontImage } from './habbo-fonts.mjs';
+import { layoutHabboText } from './font-layout.mjs';
 
 export class SceneError extends Error {}
 
@@ -95,13 +97,17 @@ const normalizeLayer = (layer) => {
     }
 
     if (layer.t === 't') {
+        const font = String(layer.font || '').trim();
+
         return {
             ...base,
             t: 't',
             v: text(layer.v, 200),
             c: hex(layer.c, '#000000'),
             fs: num(layer.fs, 20, 8, 160),
-            b: layer.b ? 1 : 0
+            b: layer.b ? 1 : 0,
+            font: /^[a-z0-9-]{1,40}$/.test(font) ? font : '',
+            sp: num(layer.sp, 0, -20, 60)
         };
     }
 
@@ -293,6 +299,16 @@ const drawBackground = async (ctx, scene, image) => {
     ctx.restore();
 };
 
+const drawTextLayer = (ctx, layer, font, image) => {
+    const laid = layoutHabboText(font, layer.v, { size: layer.fs, spacing: layer.sp });
+
+    setSmoothing(ctx, false);
+
+    for (const glyph of laid.glyphs) {
+        ctx.drawImage(image, glyph.sx, glyph.sy, glyph.sw, glyph.sh, glyph.dx, glyph.dy, glyph.dw, glyph.dh);
+    }
+};
+
 const drawLayer = (ctx, layer, drawable, smooth) => {
     ctx.save();
     ctx.globalAlpha = layer.o / 100;
@@ -302,6 +318,14 @@ const drawLayer = (ctx, layer, drawable, smooth) => {
 
     if (layer.t === 't') {
         ctx.scale(scale, scale);
+
+        if (drawable) {
+            drawTextLayer(ctx, layer, drawable.font, drawable.image);
+            ctx.restore();
+
+            return;
+        }
+
         ctx.font = `${ layer.b ? 'bold ' : '' }${ layer.fs }px sans-serif`;
         ctx.fillStyle = layer.c;
         ctx.textBaseline = 'top';
@@ -327,7 +351,16 @@ export const renderScene = async (scene, renderer) => {
 
     for (const layer of scene.l) {
         if (layer.t === 't') {
-            prepared.push({ layer, frames: null });
+            let typeface = null;
+
+            if (layer.font && CONFIG.fonts.enabled) {
+                const font = await getFont(layer.font);
+                const image = font ? await getFontImage(layer.font) : null;
+
+                if (image) typeface = { font, image };
+            }
+
+            prepared.push({ layer, frames: null, typeface });
 
             continue;
         }
@@ -369,7 +402,7 @@ export const renderScene = async (scene, renderer) => {
 
         for (const entry of prepared) {
             if (!entry.frames) {
-                drawLayer(ctx, entry.layer, null, smooth);
+                drawLayer(ctx, entry.layer, entry.typeface || null, smooth);
 
                 continue;
             }

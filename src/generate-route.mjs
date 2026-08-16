@@ -3,6 +3,7 @@ import { renderGeneratePage } from './generate-page.mjs';
 import { renderScenePage } from './scene-page.mjs';
 import { getFigureData } from './figuredata.mjs';
 import { fetchImageBuffer, hostAllowed, SceneError } from './scene.mjs';
+import { getFontManifest, getFontSheet } from './habbo-fonts.mjs';
 import { createAuth, renderLoginPage, safeEqual } from './generate-auth.mjs';
 import { makeClientIp } from './security.mjs';
 import { findUserByName, searchUsers } from './db.mjs';
@@ -70,6 +71,7 @@ export const createGenerateRouter = (CONFIG) => {
 
     const searchAvailable = db.enabled;
     const sceneAvailable = CONFIG.scene.enabled;
+    const fontsAvailable = CONFIG.scene.enabled && CONFIG.fonts.enabled;
     const wardrobeAvailable = CONFIG.wardrobe.enabled;
 
     const isSecure = (req) => req.secure || req.get('x-forwarded-proto') === 'https';
@@ -314,6 +316,7 @@ export const createGenerateRouter = (CONFIG) => {
                 logoutEnabled: gen.authEnabled,
                 publicUrl: gen.publicUrl,
                 imageHosts: CONFIG.scene.imageHosts,
+                fontsEnabled: fontsAvailable,
                 apiKey: gen.uiApiKey,
                 token: gen.token,
                 title: gen.title,
@@ -353,6 +356,39 @@ export const createGenerateRouter = (CONFIG) => {
                 const message = error instanceof SceneError ? error.message : 'Could not load that image.';
 
                 return res.status(502).type('text/plain').send(message);
+            }
+        });
+    }
+
+    if (fontsAvailable) {
+        router.get('/fonts', async (req, res) => {
+            try {
+                const fonts = (await getFontManifest()).filter((font) => font.glyphs && Object.keys(font.glyphs).length);
+
+                res.set('Cache-Control', 'private, max-age=3600');
+
+                return res.json({ ok: true, fonts });
+            } catch (error) {
+                console.error('[pixinode] font catalog failed:', error?.message || error);
+
+                return res.status(502).json({ ok: false, error: 'Fonts unavailable.' });
+            }
+        });
+
+        router.get('/fonts/:id.png', async (req, res) => {
+            try {
+                const sheet = await getFontSheet(String(req.params.id || ''));
+
+                if (!sheet) return res.status(404).type('text/plain').send('Unknown font.');
+
+                res.set('Cache-Control', 'public, max-age=86400');
+                res.type('image/png');
+
+                return res.send(sheet);
+            } catch (error) {
+                console.error('[pixinode] font sheet failed:', error?.message || error);
+
+                return res.status(502).type('text/plain').send('Font unavailable.');
             }
         });
     }
