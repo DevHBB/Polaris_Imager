@@ -1573,6 +1573,7 @@ ${ LAYOUT_JS }
     return BASE + '/bubble.png?id=' + encodeURIComponent(layer.bubble) +
       '&text=' + encodeURIComponent((layer.text || 'Aa').slice(0, 60)) +
       '&text_color=' + encodeURIComponent(layer.text_color || '000000') +
+      '&scale=2' +
       (TOKEN ? '&token=' + encodeURIComponent(TOKEN) : '');
   }
 
@@ -1587,6 +1588,7 @@ ${ LAYOUT_JS }
     img.alt = '';
     img.style.imageRendering = 'pixelated';
     img.style.maxWidth = '100%';
+    img.style.zoom = '0.5';
     img.src = bubblePreviewUrl(selected);
     host.appendChild(img);
   }

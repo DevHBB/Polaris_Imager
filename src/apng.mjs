@@ -4,7 +4,7 @@ const UPNG = UPNGImport?.encode ? UPNGImport : (UPNGImport?.default ?? UPNGImpor
 
 const toArrayBuffer = (buf) => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 
-const upscaleNearest = (rgba, width, height, factor) => {
+export const upscaleNearest = (rgba, width, height, factor) => {
     const outWidth = width * factor;
     const outHeight = height * factor;
     const out = Buffer.allocUnsafe(outWidth * outHeight * 4);

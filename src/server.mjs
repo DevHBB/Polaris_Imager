@@ -2,7 +2,7 @@ import express from 'express';
 import { createHash } from 'crypto';
 import { CONFIG, buildRendererConfig } from './config.mjs';
 import { parseAvatarParams, ParamError } from './params.mjs';
-import { encodeFrames, flattenFrames } from './apng.mjs';
+import { encodeFrames, flattenFrames, upscaleNearest } from './apng.mjs';
 import { RendererPool, preflightGl } from './renderer.mjs';
 import { createApiKeyGuard, createCors, createRateLimiter, makeClientIp, securityHeaders } from './security.mjs';
 import { createAccessLogger } from './logger.mjs';
@@ -228,17 +228,30 @@ app.get('/avatarimage', cors, rateLimiter, apiKeyGuard, async (req, res) => {
         let width = rendered.width;
         let height = rendered.height;
 
+        let postScale = descriptor.postScale;
+
+        // The avatar is enlarged first, then the bubble is composited at that same
+        // factor: its text is drawn at the final size instead of being magnified
+        // pixel by pixel afterwards.
         if (bubble) {
+            if (postScale !== 1) {
+                frames = frames.map((frame) => upscaleNearest(frame, width, height, postScale));
+                width *= postScale;
+                height *= postScale;
+            }
+
             const composed = composeWithBubble(
                 { frames, width, height },
                 bubble,
                 descriptor.text,
-                `#${ descriptor.textColor.toString(16).padStart(6, '0') }`
+                `#${ descriptor.textColor.toString(16).padStart(6, '0') }`,
+                postScale
             );
 
             frames = composed.frames;
             width = composed.width;
             height = composed.height;
+            postScale = 1;
         }
 
         if (descriptor.background !== null) frames = flattenFrames(frames, descriptor.background);
@@ -248,7 +261,7 @@ app.get('/avatarimage', cors, rateLimiter, apiKeyGuard, async (req, res) => {
             width,
             height,
             delays: rendered.delays,
-            postScale: descriptor.postScale
+            postScale
         });
 
         cache.set(cacheKey, { buffer, animated: rendered.animated });

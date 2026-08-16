@@ -79,7 +79,9 @@ const measure = (image) => {
         start--;
     }
 
-    return { textStart: Math.min(start + 3, image.width - RIGHT_CAP - 1), stretchAt: probe };
+    // A couple of pixels of breathing room so the text does not sit against the
+    // edge of the message area.
+    return { textStart: Math.min(start + 6, image.width - RIGHT_CAP - 1), stretchAt: probe };
 };
 
 export const getBubbleCatalog = async () => {
@@ -142,73 +144,99 @@ export const getBubbleManifest = async () => (await getBubbleCatalog()).map((bub
 
 export const BUBBLE_FONT = '400 12px "Liberation Sans", Arial, sans-serif';
 
-export const measureBubble = (bubble, text, ctx) => {
-    ctx.font = BUBBLE_FONT;
+const fontAt = (scale) => `400 ${ 12 * scale }px "Liberation Sans", Arial, sans-serif`;
+
+export const measureBubble = (bubble, text, ctx, scale = 1) => {
+    ctx.font = fontAt(scale);
 
     const line = String(text || '').split('\n')[0].slice(0, 120);
-    const textWidth = Math.ceil(ctx.measureText(line).width);
-    const width = Math.max(bubble.width, bubble.textStart + textWidth + 6 + RIGHT_CAP);
+    const textWidth = Math.ceil(ctx.measureText(line).width / scale);
+    const width = Math.max(bubble.width, bubble.textStart + textWidth + 8 + RIGHT_CAP);
 
-    return { line, textWidth, width, height: bubble.height + (bubble.pointer ? bubble.pointer.height : 0) };
+    return {
+        line,
+        textWidth,
+        width: Math.round(width * scale),
+        height: Math.round((bubble.height + (bubble.pointer ? bubble.pointer.height : 0)) * scale),
+        unscaledWidth: width
+    };
 };
 
-export const drawBubble = (ctx, bubble, text, textColour, x, y) => {
-    const { line, width } = measureBubble(bubble, text, ctx);
-    const body = bubble.height;
-    const extra = width - bubble.width;
+// The sprite is nearest-scaled so its pixel art stays crisp, while the text is
+// drawn at the matching font size instead of being magnified afterwards — that is
+// what keeps it readable at size=l.
+export const drawBubble = (ctx, bubble, text, textColour, x, y, scale = 1) => {
+    const measured = measureBubble(bubble, text, ctx, scale);
+    const body = Math.round(bubble.height * scale);
+    const stretchAt = Math.round(bubble.stretchAt * scale);
+    const capWidth = Math.round((bubble.width - bubble.stretchAt) * scale);
+    const extra = measured.width - Math.round(bubble.width * scale);
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // Left of the stretch point, then the message column repeated, then the cap.
-    ctx.drawImage(bubble.image, 0, 0, bubble.stretchAt, body, x, y, bubble.stretchAt, body);
+    ctx.drawImage(bubble.image, 0, 0, bubble.stretchAt, bubble.height, x, y, stretchAt, body);
 
     if (extra > 0) {
-        ctx.drawImage(bubble.image, bubble.stretchAt, 0, 1, body, x + bubble.stretchAt, y, extra, body);
+        ctx.drawImage(bubble.image, bubble.stretchAt, 0, 1, bubble.height, x + stretchAt, y, extra, body);
     }
 
     ctx.drawImage(
         bubble.image,
-        bubble.stretchAt, 0, bubble.width - bubble.stretchAt, body,
-        x + bubble.stretchAt + extra, y, bubble.width - bubble.stretchAt, body
+        bubble.stretchAt, 0, bubble.width - bubble.stretchAt, bubble.height,
+        x + stretchAt + Math.max(0, extra), y, capWidth, body
     );
 
-    if (bubble.extra) ctx.drawImage(bubble.extra, x + width - bubble.extra.width, y);
-
-    if (bubble.pointer) {
-        ctx.drawImage(bubble.pointer, x + Math.round(bubble.textStart / 2), y + body);
+    if (bubble.extra) {
+        ctx.drawImage(
+            bubble.extra, 0, 0, bubble.extra.width, bubble.extra.height,
+            x + measured.width - Math.round(bubble.extra.width * scale), y,
+            Math.round(bubble.extra.width * scale), Math.round(bubble.extra.height * scale)
+        );
     }
 
-    ctx.font = BUBBLE_FONT;
+    if (bubble.pointer) {
+        ctx.drawImage(
+            bubble.pointer, 0, 0, bubble.pointer.width, bubble.pointer.height,
+            x + Math.round((bubble.textStart / 2) * scale), y + body,
+            Math.round(bubble.pointer.width * scale), Math.round(bubble.pointer.height * scale)
+        );
+    }
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.font = fontAt(scale);
     ctx.fillStyle = textColour;
     ctx.textBaseline = 'middle';
-    ctx.fillText(line, x + bubble.textStart, y + Math.round(body / 2));
+    ctx.fillText(measured.line, x + Math.round(bubble.textStart * scale), y + Math.round(body / 2));
     ctx.restore();
 
-    return { width, height: body + (bubble.pointer ? bubble.pointer.height : 0) };
+    return { width: measured.width, height: measured.height };
 };
 
 // Renders the bubble on its own, for the picker preview.
-export const renderBubblePng = (bubble, text, textColour) => {
+export const renderBubblePng = (bubble, text, textColour, scale = 1) => {
     const probe = createCanvas(1, 1).getContext('2d');
-    const size = measureBubble(bubble, text, probe);
+    const size = measureBubble(bubble, text, probe, scale);
     const canvas = createCanvas(size.width, size.height);
 
-    drawBubble(canvas.getContext('2d'), bubble, text, textColour, 0, 0);
+    drawBubble(canvas.getContext('2d'), bubble, text, textColour, 0, 0, scale);
 
     return canvas.toBuffer('image/png');
 };
 
 // Puts the bubble above an already rendered avatar, frame by frame so an
 // animated avatar keeps its animation.
-export const composeWithBubble = ({ frames, width, height }, bubble, text, textColour) => {
+export const composeWithBubble = ({ frames, width, height }, bubble, text, textColour, scale = 1) => {
     const probe = createCanvas(1, 1).getContext('2d');
-    const size = measureBubble(bubble, text, probe);
-    const gap = 2;
+    const size = measureBubble(bubble, text, probe, scale);
+    const gap = 2 * scale;
     const outWidth = Math.max(width, size.width);
     const outHeight = height + size.height + gap;
     const avatarX = Math.round((outWidth - width) / 2);
-    const bubbleX = Math.max(0, Math.min(outWidth - size.width, avatarX + Math.round(width / 2) - bubble.textStart));
+    const bubbleX = Math.max(0, Math.min(
+        outWidth - size.width,
+        avatarX + Math.round(width / 2) - Math.round(bubble.textStart * scale)
+    ));
 
     const canvas = createCanvas(outWidth, outHeight);
     const ctx = canvas.getContext('2d');
@@ -221,7 +249,7 @@ export const composeWithBubble = ({ frames, width, height }, bubble, text, textC
         image.data.set(frame);
         ctx.putImageData(image, avatarX, size.height + gap);
 
-        drawBubble(ctx, bubble, text, textColour, bubbleX, 0);
+        drawBubble(ctx, bubble, text, textColour, bubbleX, 0, scale);
 
         return Buffer.from(ctx.getImageData(0, 0, outWidth, outHeight).data);
     });

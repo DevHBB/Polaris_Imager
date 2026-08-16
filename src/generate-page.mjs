@@ -85,7 +85,11 @@ a{color:var(--sky-dark)}
                    linear-gradient(45deg,#eef4fa 25%,transparent 25%,transparent 75%,#eef4fa 75%);
   background-size:18px 18px; background-position:0 0,9px 9px;
 }
-.preview img{max-width:100%; image-rendering:pixelated; display:block}
+.preview img{max-width:100%; display:block; image-rendering:pixelated}
+/* Nearest-neighbour is right at 1:1 or when enlarging, but it wrecks a picture
+   that has to shrink to fit the card — a bubble makes the image wide enough for
+   that to happen, and the text is the first thing to suffer. */
+.preview img.fit{image-rendering:auto}
 
 .preview img:not([src]){display:none}
 .preview::before,.preview::after{content:""; position:absolute; width:16px; height:16px; pointer-events:none}
@@ -705,7 +709,11 @@ ${ WARDROBE_CSS }
     $dl.href = url;
     $dl.setAttribute('download', 'avatar-' + params.figure.slice(0, 24) + '.png');
     $load.style.display = 'flex';
-    $img.onload = $img.onerror = function () { $load.style.display = 'none'; };
+    $img.onload = function () {
+      $load.style.display = 'none';
+      $img.classList.toggle('fit', $img.naturalWidth > $img.clientWidth);
+    };
+    $img.onerror = function () { $load.style.display = 'none'; };
     $img.src = url;
 
     try {
@@ -962,6 +970,7 @@ ${ WARDROBE_JS }
     return BASE + '/bubble.png?id=' + encodeURIComponent(id) +
       '&text=' + encodeURIComponent((val('fText') || 'Aa').slice(0, 60)) +
       '&text_color=' + encodeURIComponent(hex('fTextColor') || '000000') +
+      '&scale=2' +
       (TOKEN ? '&token=' + encodeURIComponent(TOKEN) : '');
   }
 
@@ -976,6 +985,7 @@ ${ WARDROBE_JS }
     img.alt = '';
     img.style.imageRendering = 'pixelated';
     img.style.maxWidth = '100%';
+    img.style.zoom = '0.5';
     img.src = bubblePreviewUrl();
     host.appendChild(img);
   }

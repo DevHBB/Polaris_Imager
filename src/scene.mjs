@@ -1,6 +1,6 @@
 import { deflateRawSync, inflateRawSync } from 'zlib';
 import { createCanvas, loadImage } from 'canvas';
-import { encodeFrames } from './apng.mjs';
+import { encodeFrames, upscaleNearest } from './apng.mjs';
 import { parseAvatarParams } from './params.mjs';
 import { CONFIG } from './config.mjs';
 import { getFont, getFontImage } from './habbo-fonts.mjs';
@@ -210,12 +210,23 @@ const renderAvatarLayer = async (renderer, layer, animate) => {
     if (!rendered?.frames?.length) throw new SceneError('The renderer produced no frames for a layer.');
 
     if (bubble) {
-        const raw = (animate ? rendered.frames : [rendered.frames[0]]).map((frame) => Buffer.from(frame, 'base64'));
+        const scale = descriptor.postScale || 1;
+        let raw = (animate ? rendered.frames : [rendered.frames[0]]).map((frame) => Buffer.from(frame, 'base64'));
+        let width = rendered.width;
+        let height = rendered.height;
+
+        if (scale !== 1) {
+            raw = raw.map((frame) => upscaleNearest(frame, width, height, scale));
+            width *= scale;
+            height *= scale;
+        }
+
         const composed = composeWithBubble(
-            { frames: raw, width: rendered.width, height: rendered.height },
+            { frames: raw, width, height },
             bubble,
             descriptor.text,
-            `#${ descriptor.textColor.toString(16).padStart(6, '0') }`
+            `#${ descriptor.textColor.toString(16).padStart(6, '0') }`,
+            scale
         );
 
         return {
@@ -223,8 +234,7 @@ const renderAvatarLayer = async (renderer, layer, animate) => {
                 frames: [frame],
                 width: composed.width,
                 height: composed.height,
-                delays: [0],
-                postScale: descriptor.postScale
+                delays: [0]
             })),
             delays: rendered.delays || []
         };

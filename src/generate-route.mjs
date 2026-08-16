@@ -387,7 +387,8 @@ export const createGenerateRouter = (CONFIG) => {
 
                 const text = String(first(req.query.text) ?? '').slice(0, 120) || 'Aa';
                 const colour = String(first(req.query.text_color) ?? '000000').replace('#', '');
-                const png = renderBubblePng(bubble, text, `#${ /^[0-9a-fA-F]{6}$/.test(colour) ? colour : '000000' }`);
+                const scale = Math.min(4, Math.max(1, parseInt(first(req.query.scale) ?? '1', 10) || 1));
+                const png = renderBubblePng(bubble, text, `#${ /^[0-9a-fA-F]{6}$/.test(colour) ? colour : '000000' }`, scale);
 
                 res.set('Cache-Control', 'private, max-age=600');
                 res.type('image/png');
